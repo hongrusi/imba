@@ -3,13 +3,11 @@ name: Deploy AWS Resources
 on:
   push:
     branches:
-      - main  # or any other branch as needed
+      - main  # Trigger on pushes to the main branch
 
 jobs:
-  deploy_s3_buckets:
+  deploy_resources:
     runs-on: ubuntu-latest
-    outputs: 
-      raw_data_bucket_name: ${{ steps.set_output.outputs.raw_data_bucket_name }}
     steps:
       - name: Checkout repository
         uses: actions/checkout@v3
@@ -21,7 +19,7 @@ jobs:
           aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
           aws-region: ${{ secrets.AWS_REGION }}
 
-      - name: Deploy S3 Buckets CloudFormation Stacks
+      - name: Deploy S3 Buckets CloudFormation Stack
         id: s3-buckets
         uses: aws-actions/aws-cloudformation-github-deploy@v1.0.4
         with:
@@ -29,32 +27,10 @@ jobs:
           template: cfn/s3.yml
           capabilities: CAPABILITY_IAM
 
-      - name: Set output
-        id: set_output
+      - name: Set S3 Bucket Output
         run: |
           RAW_DATA_BUCKET_NAME=$(aws cloudformation describe-stacks --stack-name imba-RawDataBucket --query "Stacks[0].Outputs[?OutputKey=='RawDataBucketName'].OutputValue" --output text)
-          echo "raw_bucket_name= $RAW_DATA_BUCKET_NAME" >> $GITHUB_OUTPUT
-      
-      - name: Debug Bucket Name
-        run: |
-            echo "Stored Bucket Name: $RAW_DATA_BUCKET_NAME"
-
-
-  deploy_lambda_function:
-    needs: deploy_s3_buckets  # This ensures that this job runs only after the 'deploy_s3_buckets' job completes successfully
-    runs-on: ubuntu-latest
-    outputs:
-      lambda_function_arn: ${{ steps.fetch_lambda_arn.outputs.lambda_function_arn }}
-    steps:
-      - name: Checkout repository
-        uses: actions/checkout@v3
-
-      - name: Configure AWS credentials
-        uses: aws-actions/configure-aws-credentials@v2
-        with:
-          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
-          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-          aws-region: ${{ secrets.AWS_REGION }}
+          echo "RAW_DATA_BUCKET_NAME=$RAW_DATA_BUCKET_NAME" >> $GITHUB_ENV
 
       - name: Deploy Lambda Function CloudFormation Stack
         id: lambda-function
@@ -64,42 +40,25 @@ jobs:
           template: cfn/lambda.yml
           capabilities: CAPABILITY_IAM
 
-      - name: Fetch LambdaFunctionArn
-        id: fetch_lambda_arn
+      - name: Fetch Lambda Function ARN
         run: |
           LAMBDA_FUNCTION_ARN=$(aws cloudformation describe-stacks --stack-name imba-LambdaFunction --query "Stacks[0].Outputs[?OutputKey=='LambdaFunctionArn'].OutputValue" --output text)
-          echo "lambda_function_arn=\"$LAMBDA_FUNCTION_ARN\"" >> $GITHUB_OUTPUT
-
-      - name: Debug Lambda Function ARN
-        run: |
-          echo "Stored Lambda Function ARN: \"$LAMBDA_FUNCTION_ARN\""
-
-  deploy_s3_notifications:
-    needs: [deploy_s3_buckets, deploy_lambda_function]  # Ensure this runs after the Lambda function is deployed
-    runs-on: ubuntu-latest
-    env:
-      RAW_DATA_BUCKET_NAME: imba-raw
-      LAMBDA_FUNCTION_ARN: arn:aws:lambda:ap-southeast-2:058264311679:function:imba-LambdaFunction-CopyObject
-    steps:
-      - name: Checkout repository
-        uses: actions/checkout@v3
-
-      - name: Configure AWS credentials
-        uses: aws-actions/configure-aws-credentials@v2
-        with:
-          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
-          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-          aws-region: ${{ secrets.AWS_REGION }}  
+          echo "LAMBDA_FUNCTION_ARN=$LAMBDA_FUNCTION_ARN" >> $GITHUB_ENV
 
       - name: Set S3 Bucket Notification
         run: |
           aws s3api put-bucket-notification-configuration \
-            --bucket imba-rawdata \
+            --bucket ${{ env.RAW_DATA_BUCKET_NAME }} \
             --notification-configuration '{
               "LambdaFunctionConfigurations": [
                 {
-                  "LambdaFunctionArn": "arn:aws:lambda:ap-southeast-2:058264311679:function:imba-LambdaFunction-CopyObject",
+                  "LambdaFunctionArn": "${{ env.LAMBDA_FUNCTION_ARN }}",
                   "Events": ["s3:ObjectCreated:*"]
                 }
               ]
             }'
+
+      - name: Debug Outputs
+        run: |
+          echo "Bucket Name: ${{ env.RAW_DATA_BUCKET_NAME }}"
+          echo "Lambda ARN: ${{ env.LAMBDA_FUNCTION_ARN }}"
