@@ -27,6 +27,11 @@ jobs:
           template: cfn/s3.yml
           capabilities: CAPABILITY_IAM
 
+      - name: Set output
+        run: |
+          RAW_DATA_BUCKET_NAME=$(aws cloudformation describe-stacks --stack-name imba-RawDataBucket --query "Stacks[0].Outputs[?OutputKey=='RawDataBucketName'].OutputValue" --output text)
+          echo "RAW_DATA_BUCKET_NAME=$RAW_DATA_BUCKET_NAME" >> $GITHUB_OUTPUT
+
   deploy_lambda_function:
     needs: deploy_s3_buckets  # This ensures that this job runs only after the 'deploy_s3_buckets' job completes successfully
     runs-on: ubuntu-latest
@@ -48,3 +53,27 @@ jobs:
           name: imba-LambdaFunction
           template: cfn/lambda.yml
           capabilities: CAPABILITY_IAM
+
+      - name: Fetch LambdaFunctionArn
+        id: fetch-lambda-arn
+        run: |
+          LAMBDA_FUNCTION_ARN=$(aws cloudformation describe-stacks --stack-name imba-LambdaFunction --query "Stacks[0].Outputs[?OutputKey=='LambdaFunctionArn'].OutputValue" --output text)
+          echo "LAMBDA_FUNCTION_ARN=$LAMBDA_FUNCTION_ARN" >> $GITHUB_OUTPUT
+
+  deploy_s3_notifications:
+    needs: deploy_lambda_function  # Ensure this runs after the Lambda function is deployed
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v3
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v2
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ secrets.AWS_REGION }}
+
+      - name: Set S3 Bucket Notification
+        run: |
+          aws s3api put-bucket-notification-configuration --bucket ${{ needs.deploy_s3_buckets.outputs.raw_data_bucket_name }} --notification-configuration '{"LambdaFunctionConfigurations": [{"LambdaFunctionArn": "${{ needs.deploy_lambda_function.outputs.lambda_function_arn }}", "Events": ["s3:ObjectCreated:*"]]]}'
