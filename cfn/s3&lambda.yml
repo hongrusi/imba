@@ -63,7 +63,7 @@ Resources:
       FunctionName: !Sub '${AWS::StackName}-CopyObjectFunction'
       Handler: index.handler
       Role: !GetAtt LambdaExecutionRole.Arn
-      Runtime: python3.8
+      Runtime: python3.12
       Code:
         ZipFile: |
           import boto3
@@ -75,9 +75,9 @@ Resources:
                   destination_bucket = context.function_name.split('-')[0] + '-imba-stanley'
                   destination_key = 'data/' + source_key.split('/')[-1]
                   s3.copy_object(Bucket=destination_bucket, CopySource={'Bucket': source_bucket, 'Key': source_key}, Key=destination_key)
-    Environment:
-      Variables:
-        DEST_BUCKET: !Ref ImbaStanleyBucketName
+      Environment:
+        Variables:
+          DEST_BUCKET: !Ref ImbaStanleyBucketName
 
   LambdaInvokePermission:
     Type: "AWS::Lambda::Permission"
