@@ -64,7 +64,11 @@ jobs:
         run: |
           LAMBDA_FUNCTION_ARN=$(aws cloudformation describe-stacks --stack-name imba-LambdaFunction --query "Stacks[0].Outputs[?OutputKey=='LambdaFunctionArn'].OutputValue" --output text)
           echo "Lambda Function ARN: $LAMBDA_FUNCTION_ARN"
-          echo "LAMBDA_FUNCTION_ARN=$LAMBDA_FUNCTION_ARN" >> $GITHUB_OUTPUT
+          echo "lambda_function_arn=$LAMBDA_FUNCTION_ARN" >> $GITHUB_OUTPUT
+
+      - name: Debug Lambda Function ARN
+        run: |
+          echo "Stored Lambda Function ARN: ${{ steps.fetch_lambda_arn.outputs.lambda_function_arn }}"
 
   deploy_s3_notifications:
     needs: [deploy_s3_buckets, deploy_lambda_function]  # Ensure this runs after the Lambda function is deployed
@@ -82,8 +86,8 @@ jobs:
       
       - name: Debug Outputs
         run: |
-          echo "Raw Data Bucket Name: ${{ needs.deploy_s3_buckets.outputs.RAW_DATA_BUCKET_NAME }}"
-          echo "Lambda Function ARN: ${{ needs.deploy_lambda_function.outputs.LAMBDA_FUNCTION_ARN }}"    
+          echo "Raw Data Bucket Name: ${{ needs.deploy_s3_buckets.outputs.raw_data_bucket_name }}"
+          echo "Lambda Function ARN from previous job: ${{ needs.deploy_lambda_function.outputs.lambda_function_arn }}"    
 
       - name: Verify Lambda Function
         run: |
