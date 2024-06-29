@@ -4,16 +4,6 @@ on:
   push:
     branches:
       - main  # or any other branch as needed
-  workflow_dispatch:
-    inputs:
-      inputBucketName:
-        description: 'Raw Data Bucket Name'
-        required: true
-        default: 'imba-rawdata'
-      inputStanleyBucketName:
-        description: 'Stanley Bucket Name'
-        required: true
-        default: 'imba-stanley'
 
 jobs:
   deploy_s3_buckets:
@@ -35,9 +25,6 @@ jobs:
         with:
           name: imba-RawDataBucket
           template: cfn/s3.yml
-          parameter-overrides: >-
-            RawDataBucketName=${{ github.event.inputs.inputBucketName }}
-            ImbaStanleyBucketName=${{ github.event.inputs.inputStanleyBucketName }}
           capabilities: CAPABILITY_IAM
 
   deploy_lambda_function:
@@ -60,6 +47,4 @@ jobs:
         with:
           name: imba-LambdaFunction
           template: cfn/lambda.yml
-          parameter-overrides: >-
-            RawDataBucketName=${{ github.event.inputs.inputBucketName }}
           capabilities: CAPABILITY_IAM CAPABILITY_NAMED_IAM
