@@ -32,7 +32,13 @@ jobs:
       - name: Set output
         id: set_output
         run: |
-          echo "RAW_DATA_BUCKET_NAME=$(aws cloudformation describe-stacks --stack-name imba-RawDataBucket --query "Stacks[0].Outputs[?OutputKey=='RawDataBucketName'].OutputValue" --output text)" >> $GITHUB_OUTPUT
+          RAW_DATA_BUCKET_NAME=$(aws cloudformation describe-stacks --stack-name imba-RawDataBucket --query "Stacks[0].Outputs[?OutputKey=='RawDataBucketName'].OutputValue" --output text)
+          echo "raw_bucket_name= $RAW_DATA_BUCKET_NAME" >> $GITHUB_OUTPUT
+      
+      - name: Debug Bucket Name
+        run: |
+            echo "Stored Bucket Name: $RAW_DATA_BUCKET_NAME"
+
 
   deploy_lambda_function:
     needs: deploy_s3_buckets  # This ensures that this job runs only after the 'deploy_s3_buckets' job completes successfully
@@ -73,7 +79,7 @@ jobs:
     runs-on: ubuntu-latest
     env:
       RAW_DATA_BUCKET_NAME: ${{ needs.deploy_s3_buckets.outputs.raw_data_bucket_name }}
-      LAMBDA_FUNCTION_ARN: ${{ needs.deploy_lambda_function.outputs.lambda_function_arn }}
+      LAMBDA_FUNCTION_ARN: arn:aws:lambda:ap-southeast-2:058264311679:function:imba-LambdaFunction-CopyObject
     steps:
       - name: Checkout repository
         uses: actions/checkout@v3
