@@ -1,0 +1,34 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: 'CloudFormation template for S3 buckets and Lambda function setup for object copying.'
+
+Parameters:
+  RawDataBucketName:
+    Type: String
+    Description: Name for the raw data S3 bucket
+    Default: imba-rawdata
+
+  ImbaStanleyBucketName:
+    Type: String
+    Description: Name for the imba-stanley S3 bucket
+    Default: imba-stanley
+
+Resources:
+  RawDataBucket:
+    Type: 'AWS::S3::Bucket'
+    Properties:
+      BucketName: !Ref RawDataBucketName
+
+  ImbaStanleyBucket:
+    Type: 'AWS::S3::Bucket'
+    Properties:
+      BucketName: !Ref ImbaStanleyBucketName
+
+ 
+Outputs:
+  RawDataBucketName:
+    Description: 'Name of the raw data S3 bucket'
+    Value: !Ref RawDataBucket
+  ImbaStanleyBucketName:
+    Description: 'Name of the imba-stanley S3 bucket'
+    Value: !Ref ImbaStanleyBucket
+

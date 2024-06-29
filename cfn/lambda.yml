@@ -1,0 +1,63 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: 'Setup Lambda function with S3 trigger.'
+
+Resources:
+  LambdaExecutionRole:
+    Type: 'AWS::IAM::Role'
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: [lambda.amazonaws.com]
+            Action: 'sts:AssumeRole'
+      ManagedPolicyArns:
+        - 'arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole'
+      Policies:
+        - PolicyName: LambdaS3Access
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Effect: Allow
+                Action:
+                  - 's3:GetObject'
+                  - 's3:PutObject'
+                Resource: !Sub 'arn:aws:s3:::${RawDataBucketName}/*'
+
+  LambdaFunction:
+    Type: 'AWS::Lambda::Function'
+    Properties:
+      FunctionName: !Sub '${AWS::StackName}-LambdaFunction'
+      Handler: index.handler
+      Role: !GetAtt LambdaExecutionRole.Arn # This indicates the function depends on the IAM role. The creation orderis automatic
+      Runtime: python3.12
+      Code:
+        ZipFile: |
+          import boto3
+          def handler(event, context):
+            s3 = boto3.client('s3')
+            for record in event['Records']:
+                source_bucket = record['s3']['bucket']['name']
+                source_key = record['s3']['object']['key']
+                destination_bucket = context.function_name.split('-')[0] + '-imba-stanley'
+                destination_key = 'data/' + source_key.split('/')[-1]
+                s3.copy_object(Bucket=destination_bucket, CopySource={'Bucket': source_bucket, 'Key': source_key}, Key=destination_key)
+
+  LambdaPermission:
+    Type: 'AWS::Lambda::Permission'
+    Properties:
+      FunctionName: !GetAtt LambdaFunction.Arn
+      Action: "lambda:InvokeFunction"
+      Principal: "s3.amazonaws.com"
+      SourceArn: !Sub 'arn:aws:s3:::${RawDataBucketName}'
+
+Parameters:
+  RawDataBucketName:
+    Type: String
+    Description: imba-rawdata
+
+Outputs:
+  LambdaFunctionName:
+    Description: 'Name of the Lambda function'
+    Value: !Ref LambdaFunction
