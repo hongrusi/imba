@@ -61,7 +61,7 @@ jobs:
           echo "LAMBDA_FUNCTION_ARN=$LAMBDA_FUNCTION_ARN" >> $GITHUB_OUTPUT
 
   deploy_s3_notifications:
-    needs: deploy_lambda_function  # Ensure this runs after the Lambda function is deployed
+    needs: [deploy_s3_buckets, deploy_lambda_function]  # Ensure this runs after the Lambda function is deployed
     runs-on: ubuntu-latest
     steps:
       - name: Checkout repository
@@ -76,4 +76,13 @@ jobs:
 
       - name: Set S3 Bucket Notification
         run: |
-          aws s3api put-bucket-notification-configuration --bucket ${{ needs.deploy_s3_buckets.outputs.raw_data_bucket_name }} --notification-configuration '{"LambdaFunctionConfigurations": [{"LambdaFunctionArn": "${{ needs.deploy_lambda_function.outputs.lambda_function_arn }}", "Events": ["s3:ObjectCreated:*"]]]}'
+          aws s3api put-bucket-notification-configuration \
+            --bucket ${{ needs.deploy_s3_buckets.outputs.RAW_DATA_BUCKET_NAME }} \
+            --notification-configuration '{
+              "LambdaFunctionConfigurations": [
+                {
+                  "LambdaFunctionArn": "${{ needs.deploy_lambda_function.outputs.LAMBDA_FUNCTION_ARN }}",
+                  "Events": ["s3:ObjectCreated:*"]
+                }
+              ]
+            }'
