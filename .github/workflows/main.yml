@@ -78,7 +78,7 @@ jobs:
     needs: [deploy_s3_buckets, deploy_lambda_function]  # Ensure this runs after the Lambda function is deployed
     runs-on: ubuntu-latest
     env:
-      RAW_DATA_BUCKET_NAME: ${{ needs.deploy_s3_buckets.outputs.raw_data_bucket_name }}
+      RAW_DATA_BUCKET_NAME: imba-raw
       LAMBDA_FUNCTION_ARN: arn:aws:lambda:ap-southeast-2:058264311679:function:imba-LambdaFunction-CopyObject
     steps:
       - name: Checkout repository
@@ -89,21 +89,16 @@ jobs:
         with:
           aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
           aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-          aws-region: ${{ secrets.AWS_REGION }}
-      
-      - name: Debug Outputs
-        run: |
-          echo "Raw Data Bucket Name: $RAW_DATA_BUCKET_NAME"
-          echo "Lambda Function ARN from previous job: $LAMBDA_FUNCTION_ARN"    
+          aws-region: ${{ secrets.AWS_REGION }}  
 
       - name: Set S3 Bucket Notification
         run: |
           aws s3api put-bucket-notification-configuration \
-            --bucket $RAW_DATA_BUCKET_NAME \
+            --bucket imba-raw \
             --notification-configuration '{
               "LambdaFunctionConfigurations": [
                 {
-                  "LambdaFunctionArn": $LAMBDA_FUNCTION_ARN,
+                  "LambdaFunctionArn": arn:aws:lambda:ap-southeast-2:058264311679:function:imba-LambdaFunction-CopyObject,
                   "Events": ["s3:ObjectCreated:*"]
                 }
               ]
