@@ -1,0 +1,98 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: 'CloudFormation template for S3 buckets and Lambda function'
+
+Resources:
+  RawDataBucket:
+    Type: 'AWS::S3::Bucket'
+    Properties:
+      BucketName: rawdata
+      NotificationConfiguration:
+        LambdaConfigurations:
+          - Event: 's3:ObjectCreated:*'
+            Function: !GetAtt CopyObjectFunction.Arn
+            Filter:
+              S3Key:
+                Rules:
+                  - Name: prefix
+                    Value: 'data/'
+
+  ImbaStanleyBucket:
+    Type: 'AWS::S3::Bucket'
+    Properties:
+      BucketName: imba-stanley
+
+  CopyObjectFunction:
+    Type: 'AWS::Lambda::Function'
+    Properties:
+      FunctionName: CopyObjectFunction
+      Handler: index.handler
+      Role: !GetAtt LambdaExecutionRole.Arn
+      Runtime: python3.8
+      Code:
+        ZipFile: |
+          import boto3
+          import json
+
+          s3 = boto3.client('s3')
+
+          def handler(event, context):
+              for record in event['Records']:
+                  source_bucket = record['s3']['bucket']['name']
+                  key = record['s3']['object']['key']
+                  target_bucket = 'imba-stanley'
+                  
+                  copy_source = {'Bucket': source_bucket, 'Key': key}
+                  s3.copy_object(Bucket=target_bucket, Key=key, CopySource=copy_source)
+                  
+              return {
+                  'statusCode': 200,
+                  'body': json.dumps('Object copied successfully!')
+              }
+
+  LambdaExecutionRole:
+    Type: 'AWS::IAM::Role'
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: lambda.amazonaws.com
+            Action: 'sts:AssumeRole'
+      Policies:
+        - PolicyName: LambdaS3Access
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Effect: Allow
+                Action:
+                  - 's3:GetObject'
+                  - 's3:PutObject'
+                Resource:
+                  - !Sub 'arn:aws:s3:::${RawDataBucket}/*'
+                  - !Sub 'arn:aws:s3:::${ImbaStanleyBucket}/*'
+              - Effect: Allow
+                Action:
+                  - 'logs:CreateLogGroup'
+                  - 'logs:CreateLogStream'
+                  - 'logs:PutLogEvents'
+                Resource: 'arn:aws:logs:*:*:*'
+
+  S3BucketPermission:
+    Type: 'AWS::Lambda::Permission'
+    Properties:
+      FunctionName: !Ref CopyObjectFunction
+      Action: 'lambda:InvokeFunction'
+      Principal: 's3.amazonaws.com'
+      SourceArn: !GetAtt RawDataBucket.Arn
+
+Outputs:
+  RawDataBucketName:
+    Description: 'Name of the raw data S3 bucket'
+    Value: !Ref RawDataBucket
+  ImbaStanleyBucketName:
+    Description: 'Name of the imba-stanley S3 bucket'
+    Value: !Ref ImbaStanleyBucket
+  LambdaFunctionName:
+    Description: 'Name of the Lambda function'
+    Value: !Ref CopyObjectFunction
