@@ -17,15 +17,6 @@ Resources:
     Type: 'AWS::S3::Bucket'
     Properties:
       BucketName: !Ref RawDataBucketName
-      NotificationConfiguration:
-        LambdaConfigurations:
-          - Event: "s3:ObjectCreated:*"
-            Filter:
-              S3Key:
-                Rules:
-                  - Name: prefix
-                    Value: "data/"
-            Function: !GetAtt CopyObjectFunction.Arn
 
   ImbaStanleyBucket:
     Type: 'AWS::S3::Bucket'
@@ -63,7 +54,7 @@ Resources:
       FunctionName: !Sub '${AWS::StackName}-CopyObjectFunction'
       Handler: index.handler
       Role: !GetAtt LambdaExecutionRole.Arn
-      Runtime: python3.12
+      Runtime: python3.8
       Code:
         ZipFile: |
           import boto3
@@ -78,6 +69,7 @@ Resources:
       Environment:
         Variables:
           DEST_BUCKET: !Ref ImbaStanleyBucketName
+    DependsOn: LambdaExecutionRole
 
   LambdaInvokePermission:
     Type: "AWS::Lambda::Permission"
@@ -87,6 +79,7 @@ Resources:
       Principal: "s3.amazonaws.com"
       SourceAccount: !Ref "AWS::AccountId"
       SourceArn: !GetAtt RawDataBucket.Arn
+    DependsOn: CopyObjectFunction
 
 Outputs:
   RawDataBucketName:
