@@ -4,18 +4,8 @@ Description: 'CloudFormation template for S3 buckets and Lambda function'
 Resources:
   RawDataBucket:
     Type: 'AWS::S3::Bucket'
-    DependsOn: S3BucketPermission
     Properties:
       BucketName: rawdata
-      NotificationConfiguration:
-        LambdaConfigurations:
-          - Event: 's3:ObjectCreated:*'
-            Function: !GetAtt CopyObjectFunction.Arn
-            Filter:
-              S3Key:
-                Rules:
-                  - Name: prefix
-                    Value: 'data/'
 
   ImbaStanleyBucket:
     Type: 'AWS::S3::Bucket'
@@ -86,6 +76,84 @@ Resources:
       Action: 'lambda:InvokeFunction'
       Principal: 's3.amazonaws.com'
       SourceArn: !GetAtt RawDataBucket.Arn
+
+  NotificationConfigurationRole:
+    Type: 'AWS::IAM::Role'
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: lambda.amazonaws.com
+            Action: 'sts:AssumeRole'
+      Policies:
+        - PolicyName: S3NotificationPolicy
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Effect: Allow
+                Action:
+                  - 's3:PutBucketNotification'
+                Resource: !GetAtt RawDataBucket.Arn
+
+  NotificationConfigurationFunction:
+    Type: 'AWS::Lambda::Function'
+    Properties:
+      Handler: index.handler
+      Role: !GetAtt NotificationConfigurationRole.Arn
+      Runtime: python3.8
+      Code:
+        ZipFile: |
+          import boto3
+          import cfnresponse
+          
+          def handler(event, context):
+              if event['RequestType'] == 'Create' or event['RequestType'] == 'Update':
+                  s3 = boto3.client('s3')
+                  bucket = event['ResourceProperties']['BucketName']
+                  function_arn = event['ResourceProperties']['FunctionArn']
+                  
+                  notification_configuration = {
+                      'LambdaFunctionConfigurations': [
+                          {
+                              'LambdaFunctionArn': function_arn,
+                              'Events': ['s3:ObjectCreated:*'],
+                              'Filter': {
+                                  'Key': {
+                                      'FilterRules': [
+                                          {
+                                              'Name': 'prefix',
+                                              'Value': 'data/'
+                                          }
+                                      ]
+                                  }
+                              }
+                          }
+                      ]
+                  }
+                  
+                  try:
+                      s3.put_bucket_notification_configuration(
+                          Bucket=bucket,
+                          NotificationConfiguration=notification_configuration
+                      )
+                      cfnresponse.send(event, context, cfnresponse.SUCCESS, {})
+                  except Exception as e:
+                      cfnresponse.send(event, context, cfnresponse.FAILED, {'Error': str(e)})
+              else:
+                  cfnresponse.send(event, context, cfnresponse.SUCCESS, {})
+
+  NotificationConfiguration:
+    Type: 'Custom::S3BucketNotification'
+    Properties:
+      ServiceToken: !GetAtt NotificationConfigurationFunction.Arn
+      BucketName: !Ref RawDataBucket
+      FunctionArn: !GetAtt CopyObjectFunction.Arn
+    DependsOn: 
+      - S3BucketPermission
+      - RawDataBucket
+      - CopyObjectFunction
 
 Outputs:
   RawDataBucketName:
