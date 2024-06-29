@@ -4,8 +4,18 @@ Description: 'CloudFormation template for S3 buckets and Lambda function'
 Resources:
   RawDataBucket:
     Type: 'AWS::S3::Bucket'
+    DependsOn: S3BucketPermission
     Properties:
       BucketName: rawdata
+      NotificationConfiguration:
+        LambdaConfigurations:
+          - Event: 's3:ObjectCreated:*'
+            Function: !GetAtt CopyObjectFunction.Arn
+            Filter:
+              S3Key:
+                Rules:
+                  - Name: prefix
+                    Value: 'data/'
 
   ImbaStanleyBucket:
     Type: 'AWS::S3::Bucket'
@@ -76,20 +86,6 @@ Resources:
       Action: 'lambda:InvokeFunction'
       Principal: 's3.amazonaws.com'
       SourceArn: !GetAtt RawDataBucket.Arn
-
-  S3BucketNotification:
-    Type: 'AWS::S3::BucketNotification'
-    Properties:
-      Bucket: !Ref RawDataBucket
-      LambdaConfigurations:
-        - Event: 's3:ObjectCreated:*'
-          Function: !GetAtt CopyObjectFunction.Arn
-          Filter:
-            S3Key:
-              Rules:
-                - Name: prefix
-                  Value: 'data/'
-    DependsOn: S3BucketPermission
 
 Outputs:
   RawDataBucketName:
