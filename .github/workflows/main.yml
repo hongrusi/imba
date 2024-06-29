@@ -94,7 +94,7 @@ jobs:
       - name: Set S3 Bucket Notification
         run: |
           aws s3api put-bucket-notification-configuration \
-            --bucket imba-raw \
+            --bucket imba-rawdata \
             --notification-configuration '{
               "LambdaFunctionConfigurations": [
                 {
