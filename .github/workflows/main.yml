@@ -47,4 +47,4 @@ jobs:
         with:
           name: imba-LambdaFunction
           template: cfn/lambda.yml
-          capabilities: CAPABILITY_IAM CAPABILITY_NAMED_IAM
+          capabilities: CAPABILITY_IAM

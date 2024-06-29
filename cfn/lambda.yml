@@ -55,7 +55,8 @@ Resources:
 Parameters:
   RawDataBucketName:
     Type: String
-    Description: imba-rawdata
+    Description: the existing S3 bucket to attach to the Lambda function
+    Default: imba-rawdata
 
 Outputs:
   LambdaFunctionName:
