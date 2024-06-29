@@ -98,7 +98,7 @@ jobs:
             --notification-configuration '{
               "LambdaFunctionConfigurations": [
                 {
-                  "LambdaFunctionArn": arn:aws:lambda:ap-southeast-2:058264311679:function:imba-LambdaFunction-CopyObject,
+                  "LambdaFunctionArn": "arn:aws:lambda:ap-southeast-2:058264311679:function:imba-LambdaFunction-CopyObject",
                   "Events": ["s3:ObjectCreated:*"]
                 }
               ]
