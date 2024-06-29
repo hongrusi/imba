@@ -5,9 +5,18 @@ on:
     branches:
       - main  # or any other branch as needed
   workflow_dispatch:
+    inputs:
+      inputBucketName:
+        description: 'Raw Data Bucket Name'
+        required: true
+        default: 'imba-rawdata'
+      inputStanleyBucketName:
+        description: 'Stanley Bucket Name'
+        required: true
+        default: 'imba-stanley'
 
 jobs:
-  deploy_s3_bucket:
+  deploy_s3_buckets:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout repository
@@ -20,16 +29,19 @@ jobs:
           aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
           aws-region: ${{ secrets.AWS_REGION }}
 
-      - name: Deploy S3 Bucket CloudFormation Stack
-        run: |
-          aws cloudformation deploy \
-            --template-file cfn/s3.yml \
-            --stack-name MyS3BucketStack \
-            --parameter-overrides RawDataBucketName=imba-rawdata \
-            --capabilities CAPABILITY_IAM
+      - name: Deploy S3 Buckets CloudFormation Stacks
+        id: s3-buckets
+        uses: aws-actions/aws-cloudformation-github-deploy@v1.0.3
+        with:
+          name: imba-RawDataBucket
+          template: cfn/s3.yml
+          parameter-overrides: >-
+            RawDataBucketName=${{ github.event.inputs.inputBucketName }}
+            ImbaStanleyBucketName=${{ github.event.inputs.inputStanleyBucketName }}
+          capabilities: CAPABILITY_IAM
 
   deploy_lambda_function:
-    needs: deploy_s3_bucket  # This ensures that this job runs only after the 'deploy_s3_bucket' job completes successfully
+    needs: deploy_s3_buckets  # This ensures that this job runs only after the 'deploy_s3_buckets' job completes successfully
     runs-on: ubuntu-latest
     steps:
       - name: Checkout repository
@@ -43,10 +55,11 @@ jobs:
           aws-region: ${{ secrets.AWS_REGION }}
 
       - name: Deploy Lambda Function CloudFormation Stack
-        run: |
-          aws cloudformation deploy \
-            --template-file cfn/lambda.yml \
-            --stack-name MyLambdaFunctionStack \
-            --parameter-overrides RawDataBucketName=imba-rawdata \
-            --capabilities CAPABILITY_IAM CAPABILITY_NAMED_IAM
-
+        id: lambda-function
+        uses: aws-actions/aws-cloudformation-github-deploy@v1.0.3
+        with:
+          name: imba-LambdaFunction
+          template: cfn/lambda.yml
+          parameter-overrides: >-
+            RawDataBucketName=${{ github.event.inputs.inputBucketName }}
+          capabilities: CAPABILITY_IAM CAPABILITY_NAMED_IAM
