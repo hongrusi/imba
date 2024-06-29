@@ -32,8 +32,7 @@ jobs:
       - name: Set output
         id: set_output
         run: |
-          RAW_DATA_BUCKET_NAME=$(aws cloudformation describe-stacks --stack-name imba-RawDataBucket --query "Stacks[0].Outputs[?OutputKey=='RawDataBucketName'].OutputValue" --output text)
-          echo "RAW_DATA_BUCKET_NAME=$RAW_DATA_BUCKET_NAME" >> $GITHUB_OUTPUT
+          echo "RAW_DATA_BUCKET_NAME=$(aws cloudformation describe-stacks --stack-name imba-RawDataBucket --query "Stacks[0].Outputs[?OutputKey=='RawDataBucketName'].OutputValue" --output text) >> $GITHUB_ENV
 
   deploy_lambda_function:
     needs: deploy_s3_buckets  # This ensures that this job runs only after the 'deploy_s3_buckets' job completes successfully
@@ -62,8 +61,7 @@ jobs:
       - name: Fetch LambdaFunctionArn
         id: fetch_lambda_arn
         run: |
-          LAMBDA_FUNCTION_ARN=$(aws cloudformation describe-stacks --stack-name imba-LambdaFunction --query "Stacks[0].Outputs[?OutputKey=='LambdaFunctionArn'].OutputValue" --output text)
-          echo "lambda_function_arn=$LAMBDA_FUNCTION_ARN" >> $GITHUB_OUTPUT
+          echo "LAMBDA_FUNCTION_ARN=$(aws cloudformation describe-stacks --stack-name imba-LambdaFunction --query "Stacks[0].Outputs[?OutputKey=='LambdaFunctionArn'].OutputValue" --output text)" >> $GITHUB_ENV
 
       - name: Debug Lambda Function ARN
         run: |
@@ -98,7 +96,7 @@ jobs:
             --notification-configuration '{
               "LambdaFunctionConfigurations": [
                 {
-                  "LambdaFunctionArn": "$LAMBDA_FUNCTION_ARN",
+                  "LambdaFunctionArn": $LAMBDA_FUNCTION_ARN,
                   "Events": ["s3:ObjectCreated:*"]
                 }
               ]
