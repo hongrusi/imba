@@ -1,0 +1,52 @@
+name: Deploy AWS Resources
+
+on:
+  push:
+    branches:
+      - main  # or any other branch as needed
+  workflow_dispatch:
+
+jobs:
+  deploy_s3_bucket:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v3
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v2
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ secrets.AWS_REGION }}
+
+      - name: Deploy S3 Bucket CloudFormation Stack
+        run: |
+          aws cloudformation deploy \
+            --template-file cfn/s3.yml \
+            --stack-name MyS3BucketStack \
+            --parameter-overrides RawDataBucketName=imba-rawdata \
+            --capabilities CAPABILITY_IAM
+
+  deploy_lambda_function:
+    needs: deploy_s3_bucket  # This ensures that this job runs only after the 'deploy_s3_bucket' job completes successfully
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v3
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v2
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ secrets.AWS_REGION }}
+
+      - name: Deploy Lambda Function CloudFormation Stack
+        run: |
+          aws cloudformation deploy \
+            --template-file cfn/lambda.yml \
+            --stack-name MyLambdaFunctionStack \
+            --parameter-overrides RawDataBucketName=imba-rawdata \
+            --capabilities CAPABILITY_IAM CAPABILITY_NAMED_IAM
+
