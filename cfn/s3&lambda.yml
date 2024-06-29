@@ -17,15 +17,6 @@ Resources:
     Type: 'AWS::S3::Bucket'
     Properties:
       BucketName: !Ref RawDataBucketName
-      NotificationConfiguration:
-        LambdaConfigurations:
-          - Event: 's3:ObjectCreated:*'
-            Filter:
-              S3Key:
-                Rules:
-                  - Name: prefix
-                    Value: 'data/'
-            Function: !GetAtt CopyObjectFunction.Arn
 
   ImbaStanleyBucket:
     Type: 'AWS::S3::Bucket'
@@ -40,7 +31,7 @@ Resources:
         Statement:
           - Effect: Allow
             Principal:
-              Service: lambda.amazonaws.com
+              Service: [lambda.amazonaws.com]
             Action: 'sts:AssumeRole'
       ManagedPolicyArns:
         - 'arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole'
@@ -55,7 +46,7 @@ Resources:
                   - 's3:PutObject'
                 Resource:
                   - !GetAtt RawDataBucket.Arn
-                  - !Join ['', ['arn:aws:s3:::', !Ref ImbaStanleyBucketName, '/data/*']]
+                  - !Sub 'arn:aws:s3:::${ImbaStanleyBucketName}/data/*'
 
   CopyObjectFunction:
     Type: 'AWS::Lambda::Function'
@@ -78,6 +69,7 @@ Resources:
       Environment:
         Variables:
           DEST_BUCKET: !Ref ImbaStanleyBucketName
+      DependsOn: LambdaExecutionRole
 
 Outputs:
   RawDataBucketName:
