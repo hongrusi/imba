@@ -1,9 +1,12 @@
 name: Deploy AWS Resources
 
 on:
-  push:
-    branches:
-      - main  # Trigger on pushes to the main branch
+#  push:
+#    branches:
+#      - main  # Trigger on pushes to the main branch
+  
+  workflow_dispatch: # Trigger manually on workflow
+
 
 jobs:
   deploy_resources:
@@ -45,6 +48,7 @@ jobs:
           LAMBDA_FUNCTION_ARN=$(aws cloudformation describe-stacks --stack-name imba-LambdaFunction --query "Stacks[0].Outputs[?OutputKey=='LambdaFunctionArn'].OutputValue" --output text)
           echo "LAMBDA_FUNCTION_ARN=$LAMBDA_FUNCTION_ARN" >> $GITHUB_ENV
 
+      # refer to AWS CLI Command Reference https://awscli.amazonaws.com/v2/documentation/api/latest/reference/s3api/put-bucket-notification-configuration.html
       - name: Set S3 Bucket Notification
         run: |
           aws s3api put-bucket-notification-configuration \
