@@ -23,7 +23,7 @@ jobs:
 
       - name: Deploy S3 Buckets CloudFormation Stacks
         id: s3-buckets
-        uses: aws-actions/aws-cloudformation-github-deploy@v1.0.3
+        uses: aws-actions/aws-cloudformation-github-deploy@v1.0.4
         with:
           name: imba-RawDataBucket
           template: cfn/s3.yml
@@ -33,7 +33,7 @@ jobs:
         id: set_output
         run: |
           RAW_DATA_BUCKET_NAME=$(aws cloudformation describe-stacks --stack-name imba-RawDataBucket --query "Stacks[0].Outputs[?OutputKey=='RawDataBucketName'].OutputValue" --output text)
-          echo "RAW_DATA_BUCKET_NAME=$RAW_DATA_BUCKET_NAME" >> $GITHUB_OUTPUT
+          echo "RAW_DATA_BUCKET_NAME=$RAW_DATA_BUCKET_NAME" >> $GITHUB_ENV
 
   deploy_lambda_function:
     needs: deploy_s3_buckets  # This ensures that this job runs only after the 'deploy_s3_buckets' job completes successfully
@@ -63,7 +63,7 @@ jobs:
         id: fetch_lambda_arn
         run: |
           LAMBDA_FUNCTION_ARN=$(aws cloudformation describe-stacks --stack-name imba-LambdaFunction --query "Stacks[0].Outputs[?OutputKey=='LambdaFunctionArn'].OutputValue" --output text)
-          echo "::set-output name=lambda_function_arn::$LAMBDA_FUNCTION_ARN"
+          echo "lambda_function_arn=$LAMBDA_FUNCTION_ARN" >> $GITHUB_ENV
 
       - name: Debug Lambda Function ARN
         run: |
@@ -85,22 +85,17 @@ jobs:
       
       - name: Debug Outputs
         run: |
-          echo "Raw Data Bucket Name: ${{ needs.deploy_s3_buckets.outputs.raw_data_bucket_name }}"
-          echo "Lambda Function ARN from previous job: ${{ needs.deploy_lambda_function.outputs.lambda_function_arn }}"    
-
-      - name: Verify Lambda Function
-        run: |
-          LAMBDA_ARN="${{ needs.deploy_lambda_function.outputs.lambda_function_arn }}"
-          aws lambda get-function --function-name "$LAMBDA_ARN"
+          echo "Raw Data Bucket Name: $RAW_DATA_BUCKET_NAME"
+          echo "Lambda Function ARN from previous job: $LAMBDA_FUNCTION_ARN"    
 
       - name: Set S3 Bucket Notification
         run: |
           aws s3api put-bucket-notification-configuration \
-            --bucket ${{ needs.deploy_s3_buckets.outputs.RAW_DATA_BUCKET_NAME }} \
+            --bucket $RAW_DATA_BUCKET_NAME \
             --notification-configuration '{
               "LambdaFunctionConfigurations": [
                 {
-                  "LambdaFunctionArn": "${{ needs.deploy_lambda_function.outputs.lambda_function_arn }}",
+                  "LambdaFunctionArn": "$LAMBDA_FUNCTION_ARN",
                   "Events": ["s3:ObjectCreated:*"]
                 }
               ]
