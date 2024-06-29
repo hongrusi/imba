@@ -90,4 +90,4 @@ Outputs:
     Value: !Ref ImbaStanleyBucket
   LambdaFunctionName:
     Description: 'Name of the Lambda function'
-    Value: !GetAtt CopyObjectFunction
+    Value: !Ref CopyObjectFunction
