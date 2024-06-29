@@ -32,7 +32,7 @@ jobs:
       - name: Set output
         id: set_output
         run: |
-          echo "RAW_DATA_BUCKET_NAME=$(aws cloudformation describe-stacks --stack-name imba-RawDataBucket --query "Stacks[0].Outputs[?OutputKey=='RawDataBucketName'].OutputValue" --output text)" >> $GITHUB_ENV
+          echo "RAW_DATA_BUCKET_NAME=$(aws cloudformation describe-stacks --stack-name imba-RawDataBucket --query "Stacks[0].Outputs[?OutputKey=='RawDataBucketName'].OutputValue" --output text)" >> $GITHUB_OUTPUT
 
   deploy_lambda_function:
     needs: deploy_s3_buckets  # This ensures that this job runs only after the 'deploy_s3_buckets' job completes successfully
@@ -62,11 +62,11 @@ jobs:
         id: fetch_lambda_arn
         run: |
           LAMBDA_FUNCTION_ARN=$(aws cloudformation describe-stacks --stack-name imba-LambdaFunction --query "Stacks[0].Outputs[?OutputKey=='LambdaFunctionArn'].OutputValue" --output text)
-          echo "lambda_function_arn=\"$LAMBDA_FUNCTION_ARN\"" >> $GITHUB_ENV
+          echo "lambda_function_arn=\"$LAMBDA_FUNCTION_ARN\"" >> $GITHUB_OUTPUT
 
       - name: Debug Lambda Function ARN
         run: |
-          echo "Stored Lambda Function ARN: ${{ steps.fetch_lambda_arn.outputs.lambda_function_arn }}"
+          echo "Stored Lambda Function ARN: \"$LAMBDA_FUNCTION_ARN\"
 
   deploy_s3_notifications:
     needs: [deploy_s3_buckets, deploy_lambda_function]  # Ensure this runs after the Lambda function is deployed
