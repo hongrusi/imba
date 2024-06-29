@@ -33,7 +33,7 @@ jobs:
         id: set_output
         run: |
           RAW_DATA_BUCKET_NAME=$(aws cloudformation describe-stacks --stack-name imba-RawDataBucket --query "Stacks[0].Outputs[?OutputKey=='RawDataBucketName'].OutputValue" --output text)
-          echo "RAW_DATA_BUCKET_NAME=$RAW_DATA_BUCKET_NAME" >> $GITHUB_ENV
+          echo "RAW_DATA_BUCKET_NAME=$RAW_DATA_BUCKET_NAME" >> $GITHUB_OUTPUT
 
   deploy_lambda_function:
     needs: deploy_s3_buckets  # This ensures that this job runs only after the 'deploy_s3_buckets' job completes successfully
@@ -63,7 +63,7 @@ jobs:
         id: fetch_lambda_arn
         run: |
           LAMBDA_FUNCTION_ARN=$(aws cloudformation describe-stacks --stack-name imba-LambdaFunction --query "Stacks[0].Outputs[?OutputKey=='LambdaFunctionArn'].OutputValue" --output text)
-          echo "lambda_function_arn=$LAMBDA_FUNCTION_ARN" >> $GITHUB_ENV
+          echo "lambda_function_arn=$LAMBDA_FUNCTION_ARN" >> $GITHUB_OUTPUT
 
       - name: Debug Lambda Function ARN
         run: |
@@ -72,6 +72,9 @@ jobs:
   deploy_s3_notifications:
     needs: [deploy_s3_buckets, deploy_lambda_function]  # Ensure this runs after the Lambda function is deployed
     runs-on: ubuntu-latest
+    env:
+      RAW_DATA_BUCKET_NAME: ${{ needs.deploy_s3_buckets.outputs.raw_data_bucket_name }}
+      LAMBDA_FUNCTION_ARN: ${{ needs.deploy_lambda_function.outputs.lambda_function_arn }}
     steps:
       - name: Checkout repository
         uses: actions/checkout@v3
