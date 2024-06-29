@@ -24,7 +24,7 @@ Resources:
               S3Key:
                 Rules:
                   - Name: prefix
-                  Value: "data/"
+                    Value: "data/"
             Function: !GetAtt CopyObjectFunction.Arn
 
   ImbaStanleyBucket:
