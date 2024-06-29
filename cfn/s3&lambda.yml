@@ -6,48 +6,11 @@ Resources:
     Type: 'AWS::S3::Bucket'
     Properties:
       BucketName: rawdata
-      NotificationConfiguration:
-        LambdaConfigurations:
-          - Event: 's3:ObjectCreated:*'
-            Function: !GetAtt CopyObjectFunction.Arn
-            Filter:
-              S3Key:
-                Rules:
-                  - Name: prefix
-                    Value: 'data/'
 
   ImbaStanleyBucket:
     Type: 'AWS::S3::Bucket'
     Properties:
       BucketName: imba-stanley
-
-  CopyObjectFunction:
-    Type: 'AWS::Lambda::Function'
-    Properties:
-      FunctionName: CopyObjectFunction
-      Handler: index.handler
-      Role: !GetAtt LambdaExecutionRole.Arn
-      Runtime: python3.8
-      Code:
-        ZipFile: |
-          import boto3
-          import json
-
-          s3 = boto3.client('s3')
-
-          def handler(event, context):
-              for record in event['Records']:
-                  source_bucket = record['s3']['bucket']['name']
-                  key = record['s3']['object']['key']
-                  target_bucket = 'imba-stanley'
-                  
-                  copy_source = {'Bucket': source_bucket, 'Key': key}
-                  s3.copy_object(Bucket=target_bucket, Key=key, CopySource=copy_source)
-                  
-              return {
-                  'statusCode': 200,
-                  'body': json.dumps('Object copied successfully!')
-              }
 
   LambdaExecutionRole:
     Type: 'AWS::IAM::Role'
@@ -78,6 +41,34 @@ Resources:
                   - 'logs:PutLogEvents'
                 Resource: 'arn:aws:logs:*:*:*'
 
+  CopyObjectFunction:
+    Type: 'AWS::Lambda::Function'
+    Properties:
+      FunctionName: CopyObjectFunction
+      Handler: index.handler
+      Role: !GetAtt LambdaExecutionRole.Arn
+      Runtime: python3.8
+      Code:
+        ZipFile: |
+          import boto3
+          import json
+
+          s3 = boto3.client('s3')
+
+          def handler(event, context):
+              for record in event['Records']:
+                  source_bucket = record['s3']['bucket']['name']
+                  key = record['s3']['object']['key']
+                  target_bucket = 'imba-stanley'
+                  
+                  copy_source = {'Bucket': source_bucket, 'Key': key}
+                  s3.copy_object(Bucket=target_bucket, Key=key, CopySource=copy_source)
+                  
+              return {
+                  'statusCode': 200,
+                  'body': json.dumps('Object copied successfully!')
+              }
+
   S3BucketPermission:
     Type: 'AWS::Lambda::Permission'
     Properties:
@@ -85,6 +76,20 @@ Resources:
       Action: 'lambda:InvokeFunction'
       Principal: 's3.amazonaws.com'
       SourceArn: !GetAtt RawDataBucket.Arn
+
+  S3BucketNotification:
+    Type: 'AWS::S3::BucketNotification'
+    Properties:
+      Bucket: !Ref RawDataBucket
+      LambdaConfigurations:
+        - Event: 's3:ObjectCreated:*'
+          Function: !GetAtt CopyObjectFunction.Arn
+          Filter:
+            S3Key:
+              Rules:
+                - Name: prefix
+                  Value: 'data/'
+    DependsOn: S3BucketPermission
 
 Outputs:
   RawDataBucketName:
