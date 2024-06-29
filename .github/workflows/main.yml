@@ -8,6 +8,8 @@ on:
 jobs:
   deploy_s3_buckets:
     runs-on: ubuntu-latest
+    outputs: 
+      raw_data_bucket_name: ${{ steps.set_output.outputs.raw_data_bucket_name }}
     steps:
       - name: Checkout repository
         uses: actions/checkout@v3
@@ -28,6 +30,7 @@ jobs:
           capabilities: CAPABILITY_IAM
 
       - name: Set output
+        id: set_output
         run: |
           RAW_DATA_BUCKET_NAME=$(aws cloudformation describe-stacks --stack-name imba-RawDataBucket --query "Stacks[0].Outputs[?OutputKey=='RawDataBucketName'].OutputValue" --output text)
           echo "RAW_DATA_BUCKET_NAME=$RAW_DATA_BUCKET_NAME" >> $GITHUB_OUTPUT
@@ -35,6 +38,8 @@ jobs:
   deploy_lambda_function:
     needs: deploy_s3_buckets  # This ensures that this job runs only after the 'deploy_s3_buckets' job completes successfully
     runs-on: ubuntu-latest
+    outputs:
+      lambda_function_arn: ${{ steps.fetch_lambda_arn.outputs.lambda_function_arn }}
     steps:
       - name: Checkout repository
         uses: actions/checkout@v3
@@ -55,7 +60,7 @@ jobs:
           capabilities: CAPABILITY_IAM
 
       - name: Fetch LambdaFunctionArn
-        id: fetch-lambda-arn
+        id: fetch_lambda_arn
         run: |
           LAMBDA_FUNCTION_ARN=$(aws cloudformation describe-stacks --stack-name imba-LambdaFunction --query "Stacks[0].Outputs[?OutputKey=='LambdaFunctionArn'].OutputValue" --output text)
           echo "LAMBDA_FUNCTION_ARN=$LAMBDA_FUNCTION_ARN" >> $GITHUB_OUTPUT
@@ -73,6 +78,11 @@ jobs:
           aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
           aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
           aws-region: ${{ secrets.AWS_REGION }}
+      
+      - name: Debug Outputs
+        run: |
+          echo "Raw Data Bucket Name: ${{ needs.deploy_s3_buckets.outputs.raw_data_bucket_name }}"
+          echo "Lambda Function ARN: ${{ needs.deploy_lambda_function.outputs.lambda_function_arn }}"    
 
       - name: Set S3 Bucket Notification
         run: |
