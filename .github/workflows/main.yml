@@ -66,7 +66,7 @@ jobs:
 
       - name: Debug Lambda Function ARN
         run: |
-          echo "Stored Lambda Function ARN: \"$LAMBDA_FUNCTION_ARN\"
+          echo "Stored Lambda Function ARN: \"$LAMBDA_FUNCTION_ARN""
 
   deploy_s3_notifications:
     needs: [deploy_s3_buckets, deploy_lambda_function]  # Ensure this runs after the Lambda function is deployed
