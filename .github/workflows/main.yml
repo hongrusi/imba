@@ -23,3 +23,16 @@ jobs:
         name: my-cloudformation-stack
         template: cfn/s3&lambda.yml
         no-fail-on-empty-changeset: "1"
+    
+    - name: Get CloudFormation Stack Events
+      if: failure()
+      run: |
+        aws cloudformation describe-stack-events --stack-name my-cloudformation-stack > stack_events.json
+    
+    - name: Upload stack events
+      if: failure()
+      uses: actions/upload-artifact@v2
+      with:
+        name: stack-events
+        path: stack_events.json
+    
