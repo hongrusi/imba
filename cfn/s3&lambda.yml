@@ -17,6 +17,15 @@ Resources:
     Type: 'AWS::S3::Bucket'
     Properties:
       BucketName: !Ref RawDataBucketName
+      NotificationConfiguration:
+        LambdaConfigurations:
+          - Event: "s3:ObjectCreated:*"
+            Filter:
+              S3Key:
+                Rules:
+                  - Name: prefix
+                  Value: "data/"
+            Function: !GetAtt CopyObjectFunction.Arn
 
   ImbaStanleyBucket:
     Type: 'AWS::S3::Bucket'
@@ -63,13 +72,21 @@ Resources:
               for record in event['Records']:
                   source_bucket = record['s3']['bucket']['name']
                   source_key = record['s3']['object']['key']
-                  destination_bucket = context.function_name.split('-')[0] + '-imba-stanley'  # Assumes the function name prefix
+                  destination_bucket = context.function_name.split('-')[0] + '-imba-stanley'
                   destination_key = 'data/' + source_key.split('/')[-1]
                   s3.copy_object(Bucket=destination_bucket, CopySource={'Bucket': source_bucket, 'Key': source_key}, Key=destination_key)
-      Environment:
-        Variables:
-          DEST_BUCKET: !Ref ImbaStanleyBucketName
-    DependsOn: LambdaExecutionRole
+    Environment:
+      Variables:
+        DEST_BUCKET: !Ref ImbaStanleyBucketName
+
+  LambdaInvokePermission:
+    Type: "AWS::Lambda::Permission"
+    Properties:
+      FunctionName: !GetAtt CopyObjectFunction.Arn
+      Action: "lambda:InvokeFunction"
+      Principal: "s3.amazonaws.com"
+      SourceAccount: !Ref "AWS::AccountId"
+      SourceArn: !GetAtt RawDataBucket.Arn
 
 Outputs:
   RawDataBucketName:
@@ -80,4 +97,4 @@ Outputs:
     Value: !Ref ImbaStanleyBucket
   LambdaFunctionName:
     Description: 'Name of the Lambda function'
-    Value: !Ref CopyObjectFunction
+    Value: !GetAtt CopyObjectFunction

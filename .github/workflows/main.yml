@@ -1,38 +1,34 @@
-name: imba CloudFormation Stack deployment
+name: Deploy CloudFormation Stack
 
 on:
   push:
-    branches: [ main ]
+    branches:
+      - main
+  workflow_dispatch:
 
 jobs:
   deploy:
     runs-on: ubuntu-latest
     steps:
-    - uses: actions/checkout@v3
-    
-    - name: Configure AWS credentials
-      uses: aws-actions/configure-aws-credentials@v2
-      with:
-        aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
-        aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-        aws-region: ${{ secrets.AWS_REGION }}  # Replace with your AWS region
-
-    - name: Deploy to AWS CloudFormation
-      uses: aws-actions/aws-cloudformation-github-deploy@v1
-      with:
-        name: my-cloudformation-stack
-        template: cfn/s3&lambda.yml
-        no-fail-on-empty-changeset: "1"
-    
-    - name: Get CloudFormation Stack Events
-      if: failure()
-      run: |
-        aws cloudformation describe-stack-events --stack-name my-cloudformation-stack > stack_events.json
-    
-    - name: Upload stack events
-      if: failure()
-      uses: actions/upload-artifact@v4
-      with:
-        name: stack-events
-        path: stack_events.json
-    
+      - uses: actions/checkout@v3
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v2
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ secrets.AWS_REGION }}
+      - name: Deploy to AWS CloudFormation
+        uses: aws-actions/aws-cloudformation-github-deploy@v1
+        with:
+          name: my-cloudformation-stack
+          template: cfn/s3&lambda.yml
+          no-fail-on-empty-changeset: "1"
+      - name: Get CloudFormation Stack Events
+        if: failure()
+        run: aws cloudformation describe-stack-events --stack-name my-cloudformation-stack > stack_events.json
+      - name: Upload stack events
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: stack-events
+          path: stack_events.json
