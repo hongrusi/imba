@@ -1,5 +1,5 @@
 AWSTemplateFormatVersion: '2010-09-09'
-Description: 'CloudFormation template for S3 buckets and Lambda function'
+Description: 'CloudFormation template for S3 buckets and Lambda function setup for object copying.'
 
 Parameters:
   RawDataBucketName:
@@ -17,6 +17,15 @@ Resources:
     Type: 'AWS::S3::Bucket'
     Properties:
       BucketName: !Ref RawDataBucketName
+      NotificationConfiguration:
+        LambdaConfigurations:
+          - Event: 's3:ObjectCreated:*'
+            Filter:
+              S3Key:
+                Rules:
+                  - Name: prefix
+                    Value: 'data/'
+            Function: !GetAtt CopyObjectFunction.Arn
 
   ImbaStanleyBucket:
     Type: 'AWS::S3::Bucket'
@@ -34,7 +43,7 @@ Resources:
               Service: lambda.amazonaws.com
             Action: 'sts:AssumeRole'
       ManagedPolicyArns:
-        - arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole
+        - 'arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole'
       Policies:
         - PolicyName: LambdaS3Access
           PolicyDocument:
@@ -45,8 +54,8 @@ Resources:
                   - 's3:GetObject'
                   - 's3:PutObject'
                 Resource:
-                  - !Sub 'arn:aws:s3:::${RawDataBucket}/*'
-                  - !Sub 'arn:aws:s3:::${ImbaStanleyBucket}/*'
+                  - !GetAtt RawDataBucket.Arn
+                  - !Join ['', ['arn:aws:s3:::', !Ref ImbaStanleyBucketName, '/data/*']]
 
   CopyObjectFunction:
     Type: 'AWS::Lambda::Function'
@@ -58,94 +67,17 @@ Resources:
       Code:
         ZipFile: |
           import boto3
-          import os
-
-          s3 = boto3.client('s3')
-
           def handler(event, context):
+              s3 = boto3.client('s3')
               for record in event['Records']:
                   source_bucket = record['s3']['bucket']['name']
-                  key = record['s3']['object']['key']
-                  target_bucket = os.environ['TARGET_BUCKET']
-                  
-                  copy_source = {'Bucket': source_bucket, 'Key': key}
-                  s3.copy_object(Bucket=target_bucket, Key=key, CopySource=copy_source)
-                  
-              return {'statusCode': 200, 'body': 'Object copied successfully!'}
+                  source_key = record['s3']['object']['key']
+                  destination_bucket = context.function_name.split('-')[0] + '-imba-stanley'  # Assumes the function name prefix
+                  destination_key = 'data/' + source_key.split('/')[-1]
+                  s3.copy_object(Bucket=destination_bucket, CopySource={'Bucket': source_bucket, 'Key': source_key}, Key=destination_key)
       Environment:
         Variables:
-          TARGET_BUCKET: !Ref ImbaStanleyBucketName
-
-  S3BucketPermission:
-    Type: 'AWS::Lambda::Permission'
-    Properties:
-      FunctionName: !Ref CopyObjectFunction
-      Action: 'lambda:InvokeFunction'
-      Principal: 's3.amazonaws.com'
-      SourceArn: !GetAtt RawDataBucket.Arn
-
-  S3BucketNotification: 
-    Type: Custom::S3BucketNotification 
-    Properties:
-      ServiceToken: !GetAtt NotificationConfigurationFunction.Arn
-      BucketName: !Ref RawDataBucket
-      NotificationConfiguration:
-        LambdaFunctionConfigurations:
-          - Event: 's3:ObjectCreated:*'
-            LambdaFunctionArn: !GetAtt CopyObjectFunction.Arn
-            Filter:
-              S3Key:
-                Rules:
-                  - Name: prefix
-                    Value: 'data/'
-
-  NotificationConfigurationFunction:
-    Type: 'AWS::Lambda::Function'
-    Properties:
-      Handler: index.handler
-      Role: !GetAtt NotificationConfigurationRole.Arn
-      Runtime: python3.8
-      Code:
-        ZipFile: |
-          import boto3
-          import cfnresponse
-          
-          def handler(event, context):
-              try:
-                  if event['RequestType'] in ['Create', 'Update']:
-                      s3 = boto3.client('s3')
-                      bucket = event['ResourceProperties']['BucketName']
-                      notification = event['ResourceProperties']['NotificationConfiguration']
-                      s3.put_bucket_notification_configuration(
-                          Bucket=bucket,
-                          NotificationConfiguration=notification
-                      )
-                  cfnresponse.send(event, context, cfnresponse.SUCCESS, {})
-              except Exception as e:
-                  print(str(e))
-                  cfnresponse.send(event, context, cfnresponse.FAILED, {'Error': str(e)})
-
-  NotificationConfigurationRole:
-    Type: 'AWS::IAM::Role'
-    Properties:
-      AssumeRolePolicyDocument:
-        Version: '2012-10-17'
-        Statement:
-          - Effect: Allow
-            Principal:
-              Service: lambda.amazonaws.com
-            Action: 'sts:AssumeRole'
-      ManagedPolicyArns:
-        - arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole
-      Policies:
-        - PolicyName: S3NotificationPolicy
-          PolicyDocument:
-            Version: '2012-10-17'
-            Statement:
-              - Effect: Allow
-                Action:
-                  - 's3:PutBucketNotification'
-                Resource: !GetAtt RawDataBucket.Arn
+          DEST_BUCKET: !Ref ImbaStanleyBucketName
 
 Outputs:
   RawDataBucketName:
