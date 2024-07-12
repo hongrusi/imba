@@ -57,7 +57,7 @@ jobs:
       
       - name: Deploy S3 Buckets CloudFormation Stack
         id: s3-buckets
-        if: steps.changes.outputs.s3 == 'true' && steps.s3-stack-check.outputs.s3_stack_up_to_date != 'true'
+        if: steps.changes.outputs.s3 == 'true' || steps.s3-stack-check.outputs.s3_stack_up_to_date != 'true'
         uses: aws-actions/aws-cloudformation-github-deploy@v1.0.4
         with:
           name: imba-RawDataBucket
@@ -95,7 +95,7 @@ jobs:
       
       - name: Deploy Lambda Function CloudFormation Stack
         id: lambda-function
-        if: steps.changes.outputs.lambda == 'true' && steps.lambda-stack-check.outputs.lambda_stack_up_to_date != 'true'
+        if: steps.changes.outputs.lambda == 'true' || steps.lambda-stack-check.outputs.lambda_stack_up_to_date != 'true'
         uses: aws-actions/aws-cloudformation-github-deploy@v1
         with:
           name: imba-LambdaFunction
