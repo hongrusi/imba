@@ -1,11 +1,11 @@
 name: Deploy AWS Resources
 
 on:
-#  push:
-#    branches:
-#      - main  # Trigger on pushes to the main branch
+  push:
+    branches:
+      - main  # Trigger on pushes to the main branch
   
-  workflow_dispatch: # Trigger manually on workflow
+#  workflow_dispatch: # Trigger manually on workflow
 
 
 jobs:
@@ -30,10 +30,14 @@ jobs:
           template: cfn/s3.yml
           capabilities: CAPABILITY_IAM
 
-      - name: Set S3 Bucket Output
+      - name: Set S3 Bucket Outputs
         run: |
           RAW_DATA_BUCKET_NAME=$(aws cloudformation describe-stacks --stack-name imba-RawDataBucket --query "Stacks[0].Outputs[?OutputKey=='RawDataBucketName'].OutputValue" --output text)
+          IMBA_STANLEY_BUCKET_NAME=$(aws cloudformation describe-stacks --stack-name imba-RawDataBucket --query "Stacks[0].Outputs[?OutputKey=='ImbaStanleyBucketName'].OutputValue" --output text)
+          GLUE_SCRIPTS_BUCKET_NAME=$(aws cloudformation describe-stacks --stack-name imba-RawDataBucket --query "Stacks[0].Outputs[?OutputKey=='GlueScriptsBucketName'].OutputValue" --output text)
           echo "RAW_DATA_BUCKET_NAME=$RAW_DATA_BUCKET_NAME" >> $GITHUB_ENV
+          echo "IMBA_STANLEY_BUCKET_NAME=$IMBA_STANLEY_BUCKET_NAME" >> $GITHUB_ENV
+          echo "GLUE_SCRIPTS_BUCKET_NAME=$GLUE_SCRIPTS_BUCKET_NAME" >> $GITHUB_ENV
 
       - name: Deploy Lambda Function CloudFormation Stack
         id: lambda-function
@@ -66,3 +70,23 @@ jobs:
         run: |
           echo "Bucket Name: ${{ env.RAW_DATA_BUCKET_NAME }}"
           echo "Lambda ARN: ${{ env.LAMBDA_FUNCTION_ARN }}"
+    
+
+      - name: Upload Glue Job Script
+      run: |
+        aws s3 cp glue/etl_script.py s3://${{ env.GLUE_SCRIPTS_BUCKET_NAME }}/etl_script.py
+
+      - name: Deploy Glue Job CloudFormation Stack
+        id: glue-job
+        uses: aws-actions/aws-cloudformation-github-deploy@v1
+        with:
+          name: imba-GlueJob
+          template: cfn/glue.yml
+          parameter-overrides: |
+            GlueScriptsBucketName=${{ env.GLUE_SCRIPTS_BUCKET_NAME }}
+            ImbaStanleyBucketName=${{ env.IMBA_STANLEY_BUCKET_NAME }}
+
+      - name: Fetch Glue Job Name
+        run: |
+          GLUE_JOB_NAME=$(aws cloudformation describe-stacks --stack-name imba-GlueJob --query "Stacks[0].Outputs[?OutputKey=='GlueJobName'].OutputValue" --output text)
+          echo "GLUE_JOB_NAME=$GLUE_JOB_NAME" >> $GITHUB_ENV

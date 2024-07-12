@@ -1,0 +1,64 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: 'CloudFormation template for AWS Glue job setup'
+
+Parameters:
+  GlueJobName:
+    Type: String
+    Description: imba ELT Glue job
+    Default: imba-stanley-etl-job
+
+  GlueScriptsBucketName:
+    Type: String
+    Description: imba-stanley-glue-scripts
+
+  ImbaStanleyBucketName:
+    Type: String
+    Description: imba-stanley
+
+Resources:
+  GlueJobRole:
+    Type: 'AWS::IAM::Role'
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: [glue.amazonaws.com]
+            Action: 'sts:AssumeRole'
+      ManagedPolicyArns:
+        - 'arn:aws:iam::aws:policy/service-role/AWSGlueServiceRole'
+      Policies:
+        - PolicyName: GlueS3Access
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Effect: Allow
+                Action:
+                  - 's3:GetObject'
+                  - 's3:PutObject'
+                Resource: 
+                  - !Sub 'arn:aws:s3:::${ImbaStanleyBucketName}/*'
+                  - !Sub 'arn:aws:s3:::${GlueScriptsBucketName}/*'
+
+  GlueJob:
+    Type: 'AWS::Glue::Job'
+    Properties:
+      Name: !Ref GlueJobName
+      Role: !GetAtt GlueJobRole.Arn
+      Command:
+        Name: glueetl
+        ScriptLocation: !Sub 's3://${GlueScriptsBucketName}/etl_script.py'
+      DefaultArguments:
+        '--job-language': 'python'
+        '--job-bookmark-option': 'job-bookmark-enable'
+      GlueVersion: '4.0'
+      MaxRetries: 0
+      Timeout: 2880
+      NumberOfWorkers: 2
+      WorkerType: 'G.1X'
+
+Outputs:
+  GlueJobName:
+    Description: 'Name of the AWS Glue job'
+    Value: !Ref GlueJob
