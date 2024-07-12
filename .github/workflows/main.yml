@@ -42,6 +42,7 @@ jobs:
       
       - name: Deploy S3 Buckets CloudFormation Stack
         id: s3-buckets
+        if: steps.changes.outputs.s3 ==' true'
         uses: aws-actions/aws-cloudformation-github-deploy@v1.0.4
         with:
           name: imba-RawDataBucket
@@ -49,6 +50,7 @@ jobs:
           capabilities: CAPABILITY_IAM
 
       - name: Set S3 Bucket Outputs
+        if: steps.changes.outputs.s3 == 'true'
         run: |
           RAW_DATA_BUCKET_NAME=$(aws cloudformation describe-stacks --stack-name imba-RawDataBucket --query "Stacks[0].Outputs[?OutputKey=='RawDataBucketName'].OutputValue" --output text)
           IMBA_STANLEY_BUCKET_NAME=$(aws cloudformation describe-stacks --stack-name imba-RawDataBucket --query "Stacks[0].Outputs[?OutputKey=='ImbaStanleyBucketName'].OutputValue" --output text)
@@ -59,6 +61,7 @@ jobs:
 
       - name: Deploy Lambda Function CloudFormation Stack
         id: lambda-function
+        if: steps.changes.outputs.lambda == 'true'
         uses: aws-actions/aws-cloudformation-github-deploy@v1
         with:
           name: imba-LambdaFunction
@@ -66,12 +69,14 @@ jobs:
           capabilities: CAPABILITY_IAM
 
       - name: Fetch Lambda Function ARN
+        if: steps.changes.outputs.lambda == 'true'
         run: |
           LAMBDA_FUNCTION_ARN=$(aws cloudformation describe-stacks --stack-name imba-LambdaFunction --query "Stacks[0].Outputs[?OutputKey=='LambdaFunctionArn'].OutputValue" --output text)
           echo "LAMBDA_FUNCTION_ARN=$LAMBDA_FUNCTION_ARN" >> $GITHUB_ENV
 
       # refer to AWS CLI Command Reference https://awscli.amazonaws.com/v2/documentation/api/latest/reference/s3api/put-bucket-notification-configuration.html
       - name: Set S3 Bucket Notification
+        if: steps.changes.outputs.lambda == 'true'
         run: |
           aws s3api put-bucket-notification-configuration \
             --bucket ${{ env.RAW_DATA_BUCKET_NAME }} \
@@ -91,11 +96,13 @@ jobs:
     
 
       - name: Upload Glue Job Script
+        if: steps.changes.outputs.glue == 'true'
         run: |
           aws s3 cp glue/etl_script.py s3://${{ env.GLUE_SCRIPTS_BUCKET_NAME }}/etl_script.py
 
       - name: Deploy Glue Job CloudFormation Stack
         id: glue-job
+        if: steps.changes.outputs.glue == 'true'
         uses: aws-actions/aws-cloudformation-github-deploy@v1
         with:
           name: imba-GlueJob
@@ -105,6 +112,7 @@ jobs:
             ImbaStanleyBucketName=${{ env.IMBA_STANLEY_BUCKET_NAME }}
 
       - name: Fetch Glue Job Name
+        if: steps.changes.outputs.glue == 'true'
         run: |
           GLUE_JOB_NAME=$(aws cloudformation describe-stacks --stack-name imba-GlueJob --query "Stacks[0].Outputs[?OutputKey=='GlueJobName'].OutputValue" --output text)
           echo "GLUE_JOB_NAME=$GLUE_JOB_NAME" >> $GITHUB_ENV
