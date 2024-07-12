@@ -137,10 +137,11 @@ jobs:
           else
             echo "glue_stack_up_to_date=false" >> $GITHUB_OUTPUT
           fi
+          echo "glue_stack_exists=$(aws cloudformation describe-stacks --stack-name imba-GlueJob &>/dev/null && echo 'true' || echo 'false')" >> $GITHUB_OUTPUT
         shell: bash
 
       - name: Upload Glue Job Script
-        if: steps.changes.outputs.glue == 'true' && steps.glue-stack-check.outputs.glue_stack_up_to_date != 'true'
+        if: steps.changes.outputs.glue == 'true' || steps.glue-stack-check.outputs.glue_stack_up_to_date != 'true'
         run: |
           aws s3 cp glue/etl_script.py s3://${{ env.GLUE_SCRIPTS_BUCKET_NAME }}/etl_script.py
         shell: bash
@@ -148,7 +149,7 @@ jobs:
 
       - name: Deploy Glue Job CloudFormation Stack
         id: glue-job
-        if: steps.changes.outputs.glue == 'true' && steps.glue-stack-check.outputs.glue_stack_up_to_date != 'true'
+        if: steps.changes.outputs.glue == 'true' || steps.glue-stack-check.outputs.glue_stack_up_to_date != 'true'
         uses: aws-actions/aws-cloudformation-github-deploy@v1
         with:
           name: imba-GlueJob
@@ -158,7 +159,7 @@ jobs:
             ImbaStanleyBucketName=${{ env.IMBA_STANLEY_BUCKET_NAME }}
 
       - name: Fetch Glue Job Name
-        if: steps.changes.outputs.glue == 'true'
+        if: steps.glue-stack-check.outputs.glue_stack_exists == 'true'
         run: |
           GLUE_JOB_NAME=$(aws cloudformation describe-stacks --stack-name imba-GlueJob --query "Stacks[0].Outputs[?OutputKey=='GlueJobName'].OutputValue" --output text)
           echo "GLUE_JOB_NAME=$GLUE_JOB_NAME" >> $GITHUB_ENV
