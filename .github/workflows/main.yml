@@ -22,6 +22,24 @@ jobs:
           aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
           aws-region: ${{ secrets.AWS_REGION }}
 
+      # Conditional deployment based on changes in main.yml
+      # CloudFormation deployment step will execute only if the relevant files have changed
+      # By using glue/**/*.py, it means "include any Python script located in the glue directory or any of its subdirectories
+      - name: Detect Changes
+        id: changes
+        uses: dorny/paths-filter@v2
+        with:
+          list-files: shell
+          filters: |
+            s3:
+             - 'cfn/s3.yml'
+            lambda:
+              - 'cfn/lambda.yml'
+              glue:
+              - 'cfn/glue.yml'
+              - 'glue/**/*.py'
+      
+      
       - name: Deploy S3 Buckets CloudFormation Stack
         id: s3-buckets
         uses: aws-actions/aws-cloudformation-github-deploy@v1.0.4
