@@ -12,29 +12,38 @@ Parameters:
     Description: Name for the imba-stanley S3 bucket
     Default: imba-stanley
 
+
+Conditions:
+  ShouldCreateRawDataBucket: !Not [!Equals [!Ref RawDataBucketName, 'imba-rawdata']]
+  ShouldCreateImbaStanleyBucket: !Not [!Equals [!Ref ImbaStanleyBucketName, 'imba-stanley']]
+
+
 Resources:
   RawDataBucket:
     Type: 'AWS::S3::Bucket'
     Properties:
       BucketName: !Ref RawDataBucketName
+    DeletionPolicy: Retain
 
   ImbaStanleyBucket:
     Type: 'AWS::S3::Bucket'
     Properties:
       BucketName: !Ref ImbaStanleyBucketName
+    DeletionPolicy: Retain
 
   GlueScriptsBucket:
     Type: 'AWS::S3::Bucket'
     Properties:
       BucketName: !Sub '${ImbaStanleyBucketName}-glue-scripts'
+    DeletionPolicy: Retain
  
 Outputs:
   RawDataBucketName:
     Description: 'Name of the raw data S3 bucket'
-    Value: !Ref RawDataBucket
+    Value: !Ref RawDataBucketName
   ImbaStanleyBucketName:
     Description: 'Name of the imba-stanley S3 bucket'
-    Value: !Ref ImbaStanleyBucket
+    Value: !Ref ImbaStanleyBucketName
   GlueScriptsBucketName:
     Description: 'Name of the Glue scripts S3 bucket'
     Value: !Ref GlueScriptsBucket
