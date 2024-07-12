@@ -73,8 +73,8 @@ jobs:
     
 
       - name: Upload Glue Job Script
-      run: |
-        aws s3 cp glue/etl_script.py s3://${{ env.GLUE_SCRIPTS_BUCKET_NAME }}/etl_script.py
+        run: |
+          aws s3 cp glue/etl_script.py s3://${{ env.GLUE_SCRIPTS_BUCKET_NAME }}/etl_script.py
 
       - name: Deploy Glue Job CloudFormation Stack
         id: glue-job
