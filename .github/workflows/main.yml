@@ -35,7 +35,7 @@ jobs:
              - 'cfn/s3.yml'
             lambda:
               - 'cfn/lambda.yml'
-              glue:
+            glue:
               - 'cfn/glue.yml'
               - 'glue/**/*.py'
       
