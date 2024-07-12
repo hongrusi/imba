@@ -40,20 +40,20 @@ jobs:
       
 
       - name: Check Current S3 Stack Template
-        if: steps.changes.outputs.s3 == 'true'
         id: s3-stack-check
         run: |
-          TEMPLATE_BODY=$(cat cfn/s3.yml | base64 -w 0)
-          STACK_TEMPLATE=$(aws cloudformation get-template --stack-name imba-RawDataBucket --query 'TemplateBody' --output text | base64 -w 0)
-          if [ "$TEMPLATE_BODY" == "$STACK_TEMPLATE" ]; then
-            echo "S3_STACK_UP_TO_DATE=true" >> $GITHUB_ENV
+          if aws cloudformation describe-stacks --stack-name imba-RawDataBucket &>/dev/null; then
+            TEMPLATE_BODY=$(cat cfn/s3.yml | base64 -w 0)
+            STACK_TEMPLATE=$(aws cloudformation get-template --stack-name imba-RawDataBucket --query 'TemplateBody' --output text | base64 -w 0)
+            echo "s3_stack_up_to_date=${TEMPLATE_BODY == STACK_TEMPLATE}" >> $GITHUB_OUTPUT
           else
-            echo "S3_STACK_UP_TO_DATE=false" >> $GITHUB_ENV
+            echo "s3_stack_up_to_date=false" >> $GITHUB_OUTPUT
           fi
+        shell: bash
       
       - name: Deploy S3 Buckets CloudFormation Stack
         id: s3-buckets
-        if: steps.changes.outputs.s3 == 'true' && env.S3_STACK_UP_TO_DATE == 'false'
+        if: steps.changes.outputs.s3 == 'true' && steps.s3-stack-check.outputs.s3_stack_up_to_date != 'true'
         uses: aws-actions/aws-cloudformation-github-deploy@v1.0.4
         with:
           name: imba-RawDataBucket
@@ -68,24 +68,26 @@ jobs:
           echo "RAW_DATA_BUCKET_NAME=$RAW_DATA_BUCKET_NAME" >> $GITHUB_ENV
           echo "IMBA_STANLEY_BUCKET_NAME=$IMBA_STANLEY_BUCKET_NAME" >> $GITHUB_ENV
           echo "GLUE_SCRIPTS_BUCKET_NAME=$GLUE_SCRIPTS_BUCKET_NAME" >> $GITHUB_ENV
-
+        shell: bash
    
+
+
       - name: Check Current Lambda Stack Template
-        if: steps.changes.outputs.lambda == 'true'
         id: lambda-stack-check
         run: |
-          TEMPLATE_BODY=$(cat cfn/lambda.yml | base64 -w 0)
-          STACK_TEMPLATE=$(aws cloudformation get-template --stack-name imba-LambdaFunction --query 'TemplateBody' --output text | base64 -w 0)
-          if [ "$TEMPLATE_BODY" == "$STACK_TEMPLATE" ]; then
-            echo "LAMBDA_STACK_UP_TO_DATE=true" >> $GITHUB_ENV
+          if aws cloudformation describe-stacks --stack-name imba-LambdaFunction &>/dev/null; then
+            TEMPLATE_BODY=$(cat cfn/lambda.yml | base64 -w 0)
+            STACK_TEMPLATE=$(aws cloudformation get-template --stack-name imba-LambdaFunction --query 'TemplateBody' --output text | base64 -w 0)
+            echo "lambda_stack_up_to_date=${TEMPLATE_BODY == STACK_TEMPLATE}" >> $GITHUB_OUTPUT
           else
-            echo "LAMBDA_STACK_UP_TO_DATE=false" >> $GITHUB_ENV
+            echo "lambda_stack_up_to_date=false" >> $GITHUB_OUTPUT
           fi
+        shell: bash
       
       
       - name: Deploy Lambda Function CloudFormation Stack
         id: lambda-function
-        if: steps.changes.outputs.lambda == 'true' && env.LAMBDA_STACK_UP_TO_DATE == 'false'
+        if: steps.changes.outputs.lambda == 'true' && steps.lambda-stack-check.outputs.lambda_stack_up_to_date != 'true'
         uses: aws-actions/aws-cloudformation-github-deploy@v1
         with:
           name: imba-LambdaFunction
@@ -110,28 +112,31 @@ jobs:
                 }
               ]
             }'
-    
+      
 
-      - name: Upload Glue Job Script
-        if: steps.changes.outputs.glue == 'true'
-        run: |
-          aws s3 cp glue/etl_script.py s3://${{ env.GLUE_SCRIPTS_BUCKET_NAME }}/etl_script.py
 
       - name: Check Current Glue Stack Template
-        if: steps.changes.outputs.glue == 'true'
         id: glue-stack-check
         run: |
-          TEMPLATE_BODY=$(cat cfn/glue.yml | base64 -w 0)
-          STACK_TEMPLATE=$(aws cloudformation get-template --stack-name imba-GlueJob --query 'TemplateBody' --output text | base64 -w 0)
-          if [ "$TEMPLATE_BODY" == "$STACK_TEMPLATE" ]; then
-            echo "GLUE_STACK_UP_TO_DATE=true" >> $GITHUB_ENV
+          if aws cloudformation describe-stacks --stack-name imba-GlueJob &>/dev/null; then
+            TEMPLATE_BODY=$(cat cfn/glue.yml | base64 -w 0)
+            STACK_TEMPLATE=$(aws cloudformation get-template --stack-name imba-GlueJob --query 'TemplateBody' --output text | base64 -w 0)
+            echo "glue_stack_up_to_date=${TEMPLATE_BODY == STACK_TEMPLATE}" >> $GITHUB_OUTPUT
           else
-            echo "GLUE_STACK_UP_TO_DATE=false" >> $GITHUB_ENV
+            echo "glue_stack_up_to_date=false" >> $GITHUB_OUTPUT
           fi
-      
+        shell: bash
+
+      - name: Upload Glue Job Script
+        if: steps.changes.outputs.glue == 'true' && steps.glue-stack-check.outputs.glue_stack_up_to_date != 'true'
+        run: |
+          aws s3 cp glue/etl_script.py s3://${{ env.GLUE_SCRIPTS_BUCKET_NAME }}/etl_script.py
+        shell: bash
+
+
       - name: Deploy Glue Job CloudFormation Stack
         id: glue-job
-        if: steps.changes.outputs.glue == 'true' && env.GLUE_STACK_UP_TO_DATE == 'false'
+        if: steps.changes.outputs.glue == 'true' && steps.glue-stack-check.outputs.glue_stack_up_to_date != 'true'
         uses: aws-actions/aws-cloudformation-github-deploy@v1
         with:
           name: imba-GlueJob
