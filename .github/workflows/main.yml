@@ -63,6 +63,7 @@ jobs:
           name: imba-RawDataBucket
           template: cfn/s3.yml
           capabilities: CAPABILITY_IAM
+          no-fail-on-empty-changeset: "1"
 
       - name: Set S3 Bucket Outputs
         run: |
@@ -101,6 +102,7 @@ jobs:
           name: imba-LambdaFunction
           template: cfn/lambda.yml
           capabilities: CAPABILITY_IAM
+          no-fail-on-empty-changeset: "1"
 
       - name: Fetch Lambda Function ARN
         run: |
@@ -157,6 +159,7 @@ jobs:
           parameter-overrides: >-
             GlueScriptsBucketName=${{ env.GLUE_SCRIPTS_BUCKET_NAME }},
             ImbaStanleyBucketName=${{ env.IMBA_STANLEY_BUCKET_NAME }}
+          no-fail-on-empty-changeset: "1"
 
       - name: Fetch Glue Job Name
         if: steps.glue-stack-check.outputs.glue_stack_exists == 'true'
