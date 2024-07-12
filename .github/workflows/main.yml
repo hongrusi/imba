@@ -45,7 +45,11 @@ jobs:
           if aws cloudformation describe-stacks --stack-name imba-RawDataBucket &>/dev/null; then
             TEMPLATE_BODY=$(cat cfn/s3.yml | base64 -w 0)
             STACK_TEMPLATE=$(aws cloudformation get-template --stack-name imba-RawDataBucket --query 'TemplateBody' --output text | base64 -w 0)
-            echo "s3_stack_up_to_date=${TEMPLATE_BODY == STACK_TEMPLATE}" >> $GITHUB_OUTPUT
+            if [ "$TEMPLATE_BODY" = "$STACK_TEMPLATE" ]; then
+              echo "s3_stack_up_to_date=true" >> $GITHUB_OUTPUT
+            else
+              echo "s3_stack_up_to_date=false" >> $GITHUB_OUTPUT
+            fi
           else
             echo "s3_stack_up_to_date=false" >> $GITHUB_OUTPUT
           fi
@@ -78,7 +82,11 @@ jobs:
           if aws cloudformation describe-stacks --stack-name imba-LambdaFunction &>/dev/null; then
             TEMPLATE_BODY=$(cat cfn/lambda.yml | base64 -w 0)
             STACK_TEMPLATE=$(aws cloudformation get-template --stack-name imba-LambdaFunction --query 'TemplateBody' --output text | base64 -w 0)
-            echo "lambda_stack_up_to_date=${TEMPLATE_BODY == STACK_TEMPLATE}" >> $GITHUB_OUTPUT
+            if [ "$TEMPLATE_BODY" = "$STACK_TEMPLATE" ]; then
+              echo "lambda_stack_up_to_date=true" >> $GITHUB_OUTPUT
+            else
+              echo "lambda_stack_up_to_date=false" >> $GITHUB_OUTPUT
+            fi
           else
             echo "lambda_stack_up_to_date=false" >> $GITHUB_OUTPUT
           fi
@@ -121,7 +129,11 @@ jobs:
           if aws cloudformation describe-stacks --stack-name imba-GlueJob &>/dev/null; then
             TEMPLATE_BODY=$(cat cfn/glue.yml | base64 -w 0)
             STACK_TEMPLATE=$(aws cloudformation get-template --stack-name imba-GlueJob --query 'TemplateBody' --output text | base64 -w 0)
-            echo "glue_stack_up_to_date=${TEMPLATE_BODY == STACK_TEMPLATE}" >> $GITHUB_OUTPUT
+            if [ "$TEMPLATE_BODY" = "$STACK_TEMPLATE" ]; then
+              echo "glue_stack_up_to_date=true" >> $GITHUB_OUTPUT
+            else
+              echo "glue_stack_up_to_date=false" >> $GITHUB_OUTPUT
+            fi
           else
             echo "glue_stack_up_to_date=false" >> $GITHUB_OUTPUT
           fi
