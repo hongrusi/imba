@@ -7,7 +7,6 @@ on:
   
 #  workflow_dispatch: # Trigger manually on workflow
 
-
 jobs:
   deploy_resources:
     runs-on: ubuntu-latest
@@ -54,7 +53,7 @@ jobs:
       
       - name: Deploy S3 Buckets CloudFormation Stack
         id: s3-buckets
-        if: env.S3_STACK_UP_TO_DATE == 'false'
+        if: steps.changes.outputs.s3 == 'true' && env.S3_STACK_UP_TO_DATE == 'false'
         uses: aws-actions/aws-cloudformation-github-deploy@v1.0.4
         with:
           name: imba-RawDataBucket
@@ -70,7 +69,7 @@ jobs:
           echo "IMBA_STANLEY_BUCKET_NAME=$IMBA_STANLEY_BUCKET_NAME" >> $GITHUB_ENV
           echo "GLUE_SCRIPTS_BUCKET_NAME=$GLUE_SCRIPTS_BUCKET_NAME" >> $GITHUB_ENV
 
-      # Similar steps for Lambda function
+   
       - name: Check Current Lambda Stack Template
         if: steps.changes.outputs.lambda == 'true'
         id: lambda-stack-check
@@ -81,11 +80,12 @@ jobs:
             echo "LAMBDA_STACK_UP_TO_DATE=true" >> $GITHUB_ENV
           else
             echo "LAMBDA_STACK_UP_TO_DATE=false" >> $GITHUB_ENV
+          fi
       
       
       - name: Deploy Lambda Function CloudFormation Stack
         id: lambda-function
-        if: env.LAMBDA_STACK_UP_TO_DATE == 'false'
+        if: steps.changes.outputs.lambda == 'true' && env.LAMBDA_STACK_UP_TO_DATE == 'false'
         uses: aws-actions/aws-cloudformation-github-deploy@v1
         with:
           name: imba-LambdaFunction
@@ -110,11 +110,6 @@ jobs:
                 }
               ]
             }'
-
-      - name: Debug Outputs
-        run: |
-          echo "Bucket Name: ${{ env.RAW_DATA_BUCKET_NAME }}"
-          echo "Lambda ARN: ${{ env.LAMBDA_FUNCTION_ARN }}"
     
 
       - name: Upload Glue Job Script
@@ -132,11 +127,11 @@ jobs:
             echo "GLUE_STACK_UP_TO_DATE=true" >> $GITHUB_ENV
           else
             echo "GLUE_STACK_UP_TO_DATE=false" >> $GITHUB_ENV
-      
+          fi
       
       - name: Deploy Glue Job CloudFormation Stack
         id: glue-job
-        if: env.GLUE_STACK_UP_TO_DATE == 'false'
+        if: steps.changes.outputs.glue == 'true' && env.GLUE_STACK_UP_TO_DATE == 'false'
         uses: aws-actions/aws-cloudformation-github-deploy@v1
         with:
           name: imba-GlueJob
