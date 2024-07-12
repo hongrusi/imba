@@ -154,8 +154,8 @@ jobs:
         with:
           name: imba-GlueJob
           template: cfn/glue.yml
-          parameter-overrides: |
-            GlueScriptsBucketName=${{ env.GLUE_SCRIPTS_BUCKET_NAME }}
+          parameter-overrides: >-
+            GlueScriptsBucketName=${{ env.GLUE_SCRIPTS_BUCKET_NAME }},
             ImbaStanleyBucketName=${{ env.IMBA_STANLEY_BUCKET_NAME }}
 
       - name: Fetch Glue Job Name
