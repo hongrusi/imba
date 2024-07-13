@@ -1,6 +1,18 @@
 AWSTemplateFormatVersion: '2010-09-09'
 Description: 'Setup Lambda function with S3 trigger.'
 
+Parameters:
+  RawDataBucket:
+    Type: String
+    Description: Name for Raw Data S3 bucket
+    Default: imba-rawdata
+
+  DestinationBucketName:
+    Type: String
+    Description: Name of Destination S3 bucket
+    Default: imba-stanley
+
+
 Resources:
   LambdaExecutionRole:
     Type: 'AWS::IAM::Role'
@@ -26,7 +38,7 @@ Resources:
               - Effect: Allow
                 Action:
                   - 's3:PutObject'
-                Resource: !Sub 'arn:aws:s3:::${DestinationBucket}/*'
+                Resource: !Sub 'arn:aws:s3:::${DestinationBucketName}/*'
 
   LambdaFunction:
     Type: 'AWS::Lambda::Function'
@@ -37,24 +49,12 @@ Resources:
       Runtime: python3.12
       Timeout: 15
       Code:
-        ZipFile: |
-          import boto3
-          import os
-          import json
-          def handler(event, context):
-            s3 = boto3.client('s3')
-            print("Received event data format: " + json.dumps(event))
-
-            # When iterating, each record is a single dictionary repreesenting an s3 event
-            for record in event['Records']:  
-                source_bucket = record['s3']['bucket']['name']
-                source_file = record['s3']['object']['key']
-                destination_bucket = os.environ['DESTINATION_BUCKET']
-                destination_file = 'data/' + source_file.split('/')[-1]
-                s3.copy_object(Bucket=destination_bucket, CopySource={'Bucket': source_bucket, 'Key': source_file}, Key=destination_file)
+        S3Bucket: !Sub  '${DestinationBucketName}-scripts'
+        S3Key: lambda.zip
+   
       Environment:
         Variables:
-          DESTINATION_BUCKET: !Ref DestinationBucket
+          DESTINATION_BUCKET: !Sub '${DestinationBucketName}-scripts'
           SOURCE_BUCKET: !Ref RawDataBucket
 
   LambdaPermission:
@@ -66,16 +66,7 @@ Resources:
       SourceArn: !Sub 'arn:aws:s3:::${RawDataBucket}'
 
 
-Parameters:
-  RawDataBucket:
-    Type: String
-    Description: Name for Raw Data S3 bucket
-    Default: imba-rawdata
 
-  DestinationBucket:
-    Type: String
-    Description: Name of Destination S3 bucket
-    Default: imba-stanley
 
 Outputs:
   LambdaFunctionArn:

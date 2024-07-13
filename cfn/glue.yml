@@ -9,7 +9,7 @@ Parameters:
 
   GlueScriptsBucketName:
     Type: String
-    Description: imba-stanley-glue-scripts
+    Description: imba-stanley-scripts
 
   ImbaStanleyBucketName:
     Type: String
