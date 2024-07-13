@@ -21,82 +21,38 @@ jobs:
           aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
           aws-region: ${{ secrets.AWS_REGION }}
 
-      # Conditional deployment based on changes in main.yml
-      # CloudFormation deployment step will execute only if the relevant files have changed
-      # By using glue/**/*.py, it means "include any Python script located in the glue directory or any of its subdirectories
-      - name: Detect Changes
-        id: changes
-        uses: dorny/paths-filter@v2
-        with:
-          list-files: shell
-          filters: |
-            s3:
-             - 'cfn/s3.yml'
-            lambda:
-              - 'cfn/lambda.yml'
-            glue:
-              - 'cfn/glue.yml'
-              - 'glue/**/*.py'
-      
-
-      - name: Check Current S3 Stack Template
-        id: s3-stack-check
-        run: |
-          if aws cloudformation describe-stacks --stack-name imba-RawDataBucket &>/dev/null; then
-            TEMPLATE_BODY=$(cat cfn/s3.yml | base64 -w 0)
-            STACK_TEMPLATE=$(aws cloudformation get-template --stack-name imba-RawDataBucket --query 'TemplateBody' --output text | base64 -w 0)
-            if [ "$TEMPLATE_BODY" = "$STACK_TEMPLATE" ]; then
-              echo "s3_stack_up_to_date=true" >> $GITHUB_OUTPUT
-            else
-              echo "s3_stack_up_to_date=false" >> $GITHUB_OUTPUT
-            fi
-          else
-            echo "s3_stack_up_to_date=false" >> $GITHUB_OUTPUT
-          fi
-        shell: bash
       
       - name: Deploy S3 Buckets CloudFormation Stack
-        id: s3-buckets
-        if: steps.changes.outputs.s3 == 'true' || steps.s3-stack-check.outputs.s3_stack_up_to_date != 'true'
+        id: deploy-s3
         uses: aws-actions/aws-cloudformation-github-deploy@v1.0.4
         with:
-          name: imba-RawDataBucket
+          name: imba-buckets
           template: cfn/s3.yml
           capabilities: CAPABILITY_IAM
           no-fail-on-empty-changeset: "1"
 
       - name: Set S3 Bucket Outputs
         run: |
-          RAW_DATA_BUCKET_NAME=$(aws cloudformation describe-stacks --stack-name imba-RawDataBucket --query "Stacks[0].Outputs[?OutputKey=='RawDataBucketName'].OutputValue" --output text)
-          IMBA_STANLEY_BUCKET_NAME=$(aws cloudformation describe-stacks --stack-name imba-RawDataBucket --query "Stacks[0].Outputs[?OutputKey=='ImbaStanleyBucketName'].OutputValue" --output text)
-          GLUE_SCRIPTS_BUCKET_NAME=$(aws cloudformation describe-stacks --stack-name imba-RawDataBucket --query "Stacks[0].Outputs[?OutputKey=='GlueScriptsBucketName'].OutputValue" --output text)
+          RAW_DATA_BUCKET_NAME=$(aws cloudformation describe-stacks --stack-name imba-buckets --query "Stacks[0].Outputs[?OutputKey=='RawDataBucketName'].OutputValue" --output text)
+          IMBA_STANLEY_BUCKET_NAME=$(aws cloudformation describe-stacks --stack-name imba-buckets --query "Stacks[0].Outputs[?OutputKey=='ImbaStanleyBucketName'].OutputValue" --output text)
+          SCRIPTS_BUCKET_NAME=$(aws cloudformation describe-stacks --stack-name imba-buckets --query "Stacks[0].Outputs[?OutputKey=='ScriptsBucketName'].OutputValue" --output text)
           echo "RAW_DATA_BUCKET_NAME=$RAW_DATA_BUCKET_NAME" >> $GITHUB_ENV
           echo "IMBA_STANLEY_BUCKET_NAME=$IMBA_STANLEY_BUCKET_NAME" >> $GITHUB_ENV
-          echo "GLUE_SCRIPTS_BUCKET_NAME=$GLUE_SCRIPTS_BUCKET_NAME" >> $GITHUB_ENV
-        shell: bash
-   
+          echo "SCRIPTS_BUCKET_NAME=$SCRIPTS_BUCKET_NAME" >> $GITHUB_ENV
 
-
-      - name: Check Current Lambda Stack Template
-        id: lambda-stack-check
+      - name: Zip function
         run: |
-          if aws cloudformation describe-stacks --stack-name imba-LambdaFunction &>/dev/null; then
-            TEMPLATE_BODY=$(cat cfn/lambda.yml | base64 -w 0)
-            STACK_TEMPLATE=$(aws cloudformation get-template --stack-name imba-LambdaFunction --query 'TemplateBody' --output text | base64 -w 0)
-            if [ "$TEMPLATE_BODY" = "$STACK_TEMPLATE" ]; then
-              echo "lambda_stack_up_to_date=true" >> $GITHUB_OUTPUT
-            else
-              echo "lambda_stack_up_to_date=false" >> $GITHUB_OUTPUT
-            fi
-          else
-            echo "lambda_stack_up_to_date=false" >> $GITHUB_OUTPUT
-          fi
-        shell: bash
-      
+          zip -j lambda.zip ./script/lambda.py
+  
+      - name: Upload Lambda function and ETL into S3 bucket
+        run: |
+          aws s3 cp lambda.zip s3://$SCRIPTS_BUCKET_NAME/lambda.zip
+          aws s3 cp script/etl_script.py s3://$SCRIPTS_BUCKET_NAME/etl_script.py
+        if: steps.deploy-s3.outcome == 'success'
+  
       
       - name: Deploy Lambda Function CloudFormation Stack
         id: lambda-function
-        if: steps.changes.outputs.lambda == 'true' || steps.lambda-stack-check.outputs.lambda_stack_up_to_date != 'true'
         uses: aws-actions/aws-cloudformation-github-deploy@v1
         with:
           name: imba-LambdaFunction
@@ -109,7 +65,6 @@ jobs:
           LAMBDA_FUNCTION_ARN=$(aws cloudformation describe-stacks --stack-name imba-LambdaFunction --query "Stacks[0].Outputs[?OutputKey=='LambdaFunctionArn'].OutputValue" --output text)
           echo "LAMBDA_FUNCTION_ARN=$LAMBDA_FUNCTION_ARN" >> $GITHUB_ENV
 
-      # refer to AWS CLI Command Reference https://awscli.amazonaws.com/v2/documentation/api/latest/reference/s3api/put-bucket-notification-configuration.html
       - name: Set S3 Bucket Notification
         run: |
           aws s3api put-bucket-notification-configuration \
@@ -122,36 +77,10 @@ jobs:
                 }
               ]
             }'
-      
-
-
-      - name: Check Current Glue Stack Template
-        id: glue-stack-check
-        run: |
-          if aws cloudformation describe-stacks --stack-name imba-GlueJob &>/dev/null; then
-            TEMPLATE_BODY=$(cat cfn/glue.yml | base64 -w 0)
-            STACK_TEMPLATE=$(aws cloudformation get-template --stack-name imba-GlueJob --query 'TemplateBody' --output text | base64 -w 0)
-            if [ "$TEMPLATE_BODY" = "$STACK_TEMPLATE" ]; then
-              echo "glue_stack_up_to_date=true" >> $GITHUB_OUTPUT
-            else
-              echo "glue_stack_up_to_date=false" >> $GITHUB_OUTPUT
-            fi
-          else
-            echo "glue_stack_up_to_date=false" >> $GITHUB_OUTPUT
-          fi
-          echo "glue_stack_exists=$(aws cloudformation describe-stacks --stack-name imba-GlueJob &>/dev/null && echo 'true' || echo 'false')" >> $GITHUB_OUTPUT
-        shell: bash
-
-      - name: Upload Glue Job Script
-        if: steps.changes.outputs.glue == 'true' || steps.glue-stack-check.outputs.glue_stack_up_to_date != 'true'
-        run: |
-          aws s3 cp glue/etl_script.py s3://${{ env.GLUE_SCRIPTS_BUCKET_NAME }}/etl_script.py
-        shell: bash
 
 
       - name: Deploy Glue Job CloudFormation Stack
         id: glue-job
-        if: steps.changes.outputs.glue == 'true' || steps.glue-stack-check.outputs.glue_stack_up_to_date != 'true'
         uses: aws-actions/aws-cloudformation-github-deploy@v1
         with:
           name: imba-GlueJob
