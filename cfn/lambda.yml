@@ -51,7 +51,6 @@ Resources:
       Code:
         S3Bucket: !Sub  '${DestinationBucketName}-scripts'
         S3Key: lambda.zip
-   
       Environment:
         Variables:
           DESTINATION_BUCKET: !Sub '${DestinationBucketName}-scripts'
