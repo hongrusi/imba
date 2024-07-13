@@ -5,15 +5,15 @@ Parameters:
   GlueJobName:
     Type: String
     Description: imba ELT Glue job
-    Default: imba-stanley-etl-job
+    Default: imba-stanley1-etl-job
 
-  GlueScriptsBucketName:
+  ScriptsBucketName:
     Type: String
-    Description: imba-stanley-scripts
+    Description: imba-stanley1-scripts
 
   ImbaStanleyBucketName:
     Type: String
-    Description: imba-stanley
+    Description: imba-stanley1
 
 Resources:
   GlueJobRole:
@@ -39,7 +39,7 @@ Resources:
                   - 's3:PutObject'
                 Resource: 
                   - !Sub 'arn:aws:s3:::${ImbaStanleyBucketName}/*'
-                  - !Sub 'arn:aws:s3:::${GlueScriptsBucketName}/*'
+                  - !Sub 'arn:aws:s3:::${ScriptsBucketName}/*'
 
   GlueJob:
     Type: 'AWS::Glue::Job'
@@ -48,7 +48,7 @@ Resources:
       Role: !GetAtt GlueJobRole.Arn
       Command:
         Name: glueetl
-        ScriptLocation: !Sub 's3://${GlueScriptsBucketName}/etl_script.py'
+        ScriptLocation: !Sub 's3://${ScriptsBucketName}/etl_script.py'
       DefaultArguments:
         '--job-language': 'python'
         '--job-bookmark-option': 'job-bookmark-enable'

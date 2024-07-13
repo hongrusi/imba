@@ -5,12 +5,12 @@ Parameters:
   RawDataBucket:
     Type: String
     Description: Name for Raw Data S3 bucket
-    Default: imba-rawdata
+    Default: imba-rawdata1
 
   DestinationBucketName:
     Type: String
     Description: Name of Destination S3 bucket
-    Default: imba-stanley
+    Default: imba-stanley1
 
 
 Resources:

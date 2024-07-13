@@ -5,17 +5,17 @@ Parameters:
   RawDataBucketName:
     Type: String
     Description: Name for the raw data S3 bucket
-    Default: imba-rawdata
+    Default: imba-rawdata1
 
   DestinationBucketName:
     Type: String
     Description: Name for the imba-stanley S3 bucket
-    Default: imba-stanley
+    Default: imba-stanley1
 
 
 Conditions:
-  ShouldCreateRawDataBucket: !Not [!Equals [!Ref RawDataBucketName, 'imba-rawdata']]
-  ShouldCreateImbaStanleyBucket: !Not [!Equals [!Ref DestinationBucketName, 'imba-stanley']]
+  ShouldCreateRawDataBucket: !Not [!Equals [!Ref RawDataBucketName, 'imba-rawdata1']]
+  ShouldCreateImbaStanleyBucket: !Not [!Equals [!Ref DestinationBucketName, 'imba-stanley1']]
 
 Resources:
   RawDataBucket:
