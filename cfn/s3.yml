@@ -5,12 +5,12 @@ Parameters:
   RawDataBucketName:
     Type: String
     Description: Name for the raw data S3 bucket
-    Default: imba-rawdata1
+    Default: imba-rawdata
 
-  DestinationBucketName:
+  DevBucketName:
     Type: String
     Description: Name for the imba-stanley S3 bucket
-    Default: imba-stanley1
+    Default: imba-devmel
 
 Resources:
   RawDataBucket:
@@ -19,32 +19,118 @@ Resources:
       BucketName: !Ref RawDataBucketName
       LifecycleConfiguration:
         Rules:
+          - Id: TransitionToIntelligentTiering
+            Status: Enabled
+            Transitions:
+              - StorageClass: INTELLIGENT_TIERING
+                TransitionInDays: 60
+      BucketEncryption:
+        ServerSideEncryptionConfiguration:
+          - ServerSideEncryptionByDefault:
+              SSEAlgorithm: AES256 
+      PublicAccessBlockConfiguration:
+        BlockPublicAcls: true
+        BlockPublicPolicy: true
+        IgnorePublicAcls: true
+        RestrictPublicBuckets: true
+    DeletionPolicy: Retain
+
+  RawDataBucketPolicy:
+    Type: 'AWS::S3::BucketPolicy'
+    Properties:
+      Bucket: !Ref RawDataBucket
+      PolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Sid: EnforceHttps
+            Effect: Deny
+            Principal: "*"
+            Action: "s3:*"
+            Resource:
+              - !Sub "arn:aws:s3:::${RawDataBucketName}/*"
+              - !Sub "arn:aws:s3:::${RawDataBucketName}"
+            Condition:
+              Bool:
+                "aws:SecureTransport": "false"
+  
+
+  DevBucket:
+    Type: 'AWS::S3::Bucket'
+    Properties:
+      BucketName: !Ref DevBucketName
+      LifecycleConfiguration:
+        Rules:
           - Id: TransitionToStandardIA
             Status: Enabled
             Transitions:
               - StorageClass: STANDARD_IA
                 TransitionInDays: 60
+      BucketEncryption:
+        ServerSideEncryptionConfiguration:
+          - ServerSideEncryptionByDefault:
+              SSEAlgorithm: AES256 
+      PublicAccessBlockConfiguration:
+        BlockPublicAcls: true
+        BlockPublicPolicy: true
+        IgnorePublicAcls: true
+        RestrictPublicBuckets: true
     DeletionPolicy: Retain
 
-  ImbaStanleyBucket:
-    Type: 'AWS::S3::Bucket'
+  
+  DevBucketPolicy:
+    Type: 'AWS::S3::BucketPolicy'
     Properties:
-      BucketName: !Ref DestinationBucketName
-    DeletionPolicy: Retain
+      Bucket: !Ref DevBucket
+      PolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Sid: EnforceHttps
+            Effect: Deny
+            Principal: "*"
+            Action: "s3:*"
+            Resource:
+              - !Sub "arn:aws:s3:::${DevBucketName}/*"
+              - !Sub "arn:aws:s3:::${DevBucketName}"
+            Condition:
+              Bool:
+                "aws:SecureTransport": "false"
 
   ScriptsBucket:
     Type: 'AWS::S3::Bucket'
     Properties:
-      BucketName: !Sub '${DestinationBucketName}-scripts'
+      BucketName: !Sub '${DevBucketName}-scripts'
+      BucketEncryption:
+          ServerSideEncryptionConfiguration:
+            - ServerSideEncryptionByDefault:
+                SSEAlgorithm: AES256
     DeletionPolicy: Retain
  
+  ScriptsBucketPolicy:
+    Type: 'AWS::S3::BucketPolicy'
+    Properties:
+      Bucket: !Ref ScriptsBucket
+      PolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Sid: EnforceHttps
+            Effect: Deny
+            Principal: "*"
+            Action: "s3:*"
+            Resource:
+              - !Sub "arn:aws:s3:::${DevBucketName}-scripts/*"
+              - !Sub "arn:aws:s3:::${DevBucketName}-scripts"
+            Condition:
+              Bool:
+                "aws:SecureTransport": "false"
+
+
 Outputs:
   RawDataBucketName:
     Description: 'Name of the raw data S3 bucket'
     Value: !Ref RawDataBucketName
-  DestinationBucketName:
+  DevBucketName:
     Description: 'Name of the imba-stanley S3 bucket'
-    Value: !Ref DestinationBucketName
+    Value: !Ref DevBucketName
   ScriptsBucketName:
     Description: 'Name of the Glue scripts S3 bucket'
     Value: !Ref ScriptsBucket

@@ -5,12 +5,12 @@ Parameters:
   RawDataBucket:
     Type: String
     Description: Name for Raw Data S3 bucket
-    Default: imba-rawdata1
+    Default: imba-rawdata
 
   DestinationBucketName:
     Type: String
     Description: Name of Destination S3 bucket
-    Default: imba-stanley1
+    Default: imba-devmel
 
 
 Resources:
@@ -22,7 +22,7 @@ Resources:
         Statement:
           - Effect: Allow
             Principal:
-              Service: [lambda.amazonaws.com]
+              Service: 'lambda.amazonaws.com'
             Action: 'sts:AssumeRole'
       ManagedPolicyArns:
         - 'arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole'
@@ -45,7 +45,7 @@ Resources:
     Properties:
       FunctionName: !Sub '${AWS::StackName}-CopyObject'
       Handler: lambda.handler
-      Role: !GetAtt LambdaExecutionRole.Arn # This indicates the function depends on the IAM role. The creation orderis automatic
+      Role: !GetAtt LambdaExecutionRole.Arn
       Runtime: python3.12
       Timeout: 15
       Code:
@@ -63,8 +63,6 @@ Resources:
       Action: "lambda:InvokeFunction"
       Principal: "s3.amazonaws.com"
       SourceArn: !Sub 'arn:aws:s3:::${RawDataBucket}'
-
-
 
 
 Outputs:

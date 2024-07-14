@@ -1,0 +1,67 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: 'Set up a crawler for data ingestion and data catelog'
+
+
+Parameters:
+  DevBucket:
+    Type: String
+    Description: Name for S3 bucket
+    Default: imba-devmel
+
+Resources:
+  GlueCrawlerRole:
+    Type: 'AWS::IAM::Role'
+    Properties: 
+      AssumeRolePolicyDocument: 
+        Version: '2012-10-17'
+        Statement: 
+          - Effect: 'Allow'
+            Principal: 
+              Service: 'glue.amazonaws.com'
+            Action: 'sts:AssumeRole'
+      Policies: 
+        - PolicyName: 'GlueCrawlerPolicy'
+          PolicyDocument: 
+            Version: '2012-10-17'
+            Statement: 
+              - Effect: 'Allow'
+                Action: 
+                  - 's3:GetObject'
+                  - 's3:PutObject'
+                  - 's3:ListBucket'
+                Resource: 
+                  - !Sub 'arn:aws:s3:::${DevBucket}'
+                  - !Sub 'arn:aws:s3:::${DevBucket}/*'
+              - Effect: 'Allow'
+                Action: 
+                  - 'glue:*'
+                Resource: 
+                  - '*'
+              - Effect: 'Allow'
+                Action:
+                  - 'iam:PassRole'
+                Resource:
+                  - !Sub 'arn:aws:iam::${AWS::AccountId}:role/service-role/AWSGlueServiceRole-imba'
+
+  GlueCrawler:
+    Type: 'AWS::Glue::Crawler'
+    Properties: 
+      Role: !GetAtt GlueCrawlerRole.Arn
+      DatabaseName: imba
+      Targets: 
+        S3Targets: 
+          - !Sub Path: 's3://{DevBucket}'
+      Name: 'imba-crawler'
+      SchemaChangePolicy: 
+        UpdateBehavior: 'UPDATE_IN_DATABASE'
+        DeleteBehavior: 'LOG'
+      RecrawlPolicy: 
+        RecrawlBehavior: 'CRAWL_EVERYTHING'
+
+Outputs:
+  GlueCrawlerRoleArn:
+    Description: 'The ARN of the Glue Crawler Role'
+    Value: !GetAtt GlueCrawlerRole.Arn
+  GlueCrawlerName:
+    Description: 'The name of the Glue Crawler'
+    Value: !Ref GlueCrawler

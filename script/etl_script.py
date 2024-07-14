@@ -26,7 +26,7 @@ def main():
 
     df_join = df_orders.join(df_order_product, on='order_id', how='inner')
     df_filter = df_join.filter(df_join.eval_set=='prior')
-    df_filter.write.mode('overwrite').format('parquet').save("s3://imba-stanley1/data/order_product_prior")
+    df_filter.write.mode('overwrite').format('parquet').save("s3://imba-devmel/data/order_product_prior")
 
 
     # User Feature 1
@@ -42,7 +42,7 @@ def main():
 
 
     # User Feature 2
-    df_order_products_prior = spark.read.format("parquet").load("s3://imba-stanley1/data/order_product_prior")
+    df_order_products_prior = spark.read.format("parquet").load("s3://imba-devmel/data/order_product_prior")
     df_order_products_prior.createOrReplaceTempView('order_products_prior')
     query ="""
             SELECT user_id
@@ -106,7 +106,7 @@ def main():
         .join(df_prod,on='product_id')
           
     # convert glue dynamic dataframe to spark dataframe
-    df.repartition(1).write.mode('overwrite').format('csv').option('header', 'true').save("s3://imba-stanley1/output")
+    df.repartition(1).write.mode('overwrite').format('csv').option('header', 'true').save("s3://imba-devmel/output")
     
 if __name__ == '__main__':
     main()

@@ -1,4 +1,4 @@
-name: Deploy AWS Resources
+name: Deploy Cloudformation Templates
 
 on:
   push:
@@ -34,10 +34,10 @@ jobs:
       - name: Set S3 Bucket Outputs
         run: |
           RAW_DATA_BUCKET_NAME=$(aws cloudformation describe-stacks --stack-name imba-buckets --query "Stacks[0].Outputs[?OutputKey=='RawDataBucketName'].OutputValue" --output text)
-          IMBA_STANLEY_BUCKET_NAME=$(aws cloudformation describe-stacks --stack-name imba-buckets --query "Stacks[0].Outputs[?OutputKey=='ImbaStanleyBucketName'].OutputValue" --output text)
+          DEV_BUCKET_NAME=$(aws cloudformation describe-stacks --stack-name imba-buckets --query "Stacks[0].Outputs[?OutputKey=='DevBucketName'].OutputValue" --output text)
           SCRIPTS_BUCKET_NAME=$(aws cloudformation describe-stacks --stack-name imba-buckets --query "Stacks[0].Outputs[?OutputKey=='ScriptsBucketName'].OutputValue" --output text)
           echo "RAW_DATA_BUCKET_NAME=$RAW_DATA_BUCKET_NAME" >> $GITHUB_ENV
-          echo "IMBA_STANLEY_BUCKET_NAME=$IMBA_STANLEY_BUCKET_NAME" >> $GITHUB_ENV
+          echo "DEV_BUCKET_NAME=$IMBA_STANLEY_BUCKET_NAME" >> $GITHUB_ENV
           echo "SCRIPTS_BUCKET_NAME=$SCRIPTS_BUCKET_NAME" >> $GITHUB_ENV
 
       - name: Zip function
@@ -78,6 +78,16 @@ jobs:
               ]
             }'
 
+      - name: Deploy Glue Crawler CloudFormation Stack
+        id: glue-crawler
+        uses: aws-actions/aws-cloudformation-github-deploy@v1
+        with:
+          name: imba-GlueCrawler
+          template: cfn/crawler.yml
+          capabilities: CAPABILITY_IAM
+          no-fail-on-empty-changeset: "1"
+          parameter-overrides: >-
+            DevBucket=${{ env.DEV_BUCKET_NAME }}
 
       - name: Deploy Glue Job CloudFormation Stack
         id: glue-job
@@ -87,11 +97,18 @@ jobs:
           template: cfn/glue.yml
           parameter-overrides: >-
             ScriptsBucketName=${{ env.SCRIPTS_BUCKET_NAME }},
-            ImbaStanleyBucketName=${{ env.IMBA_STANLEY_BUCKET_NAME }}
+            DevBucketName=${{ env.IMBA_STANLEY_BUCKET_NAME }}
           no-fail-on-empty-changeset: "1"
 
       - name: Fetch Glue Job Name
-        if: steps.glue-stack-check.outputs.glue_stack_exists == 'true'
         run: |
           GLUE_JOB_NAME=$(aws cloudformation describe-stacks --stack-name imba-GlueJob --query "Stacks[0].Outputs[?OutputKey=='GlueJobName'].OutputValue" --output text)
           echo "GLUE_JOB_NAME=$GLUE_JOB_NAME" >> $GITHUB_ENV
+      
+#     - name: Start Glue Crawler
+#       run: |
+#         aws glue start-crawler --name imba-crawler
+
+#      - name: Run Glue Job
+#        run: |
+#          aws glue start-job-run --job-name ${{ env.GLUE_JOB_NAME }}

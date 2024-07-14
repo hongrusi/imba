@@ -5,15 +5,15 @@ Parameters:
   GlueJobName:
     Type: String
     Description: imba ELT Glue job
-    Default: imba-stanley1-etl-job
+    Default: imba-etl-job
 
   ScriptsBucketName:
     Type: String
-    Description: imba-stanley1-scripts
+    Description: imba-scripts
 
-  ImbaStanleyBucketName:
+  DevBucketName:
     Type: String
-    Description: imba-stanley1
+    Description: imba-devmel
 
 Resources:
   GlueJobRole:
@@ -24,7 +24,7 @@ Resources:
         Statement:
           - Effect: Allow
             Principal:
-              Service: [glue.amazonaws.com]
+              Service: 'glue.amazonaws.com'
             Action: 'sts:AssumeRole'
       ManagedPolicyArns:
         - 'arn:aws:iam::aws:policy/service-role/AWSGlueServiceRole'
@@ -38,7 +38,7 @@ Resources:
                   - 's3:GetObject'
                   - 's3:PutObject'
                 Resource: 
-                  - !Sub 'arn:aws:s3:::${ImbaStanleyBucketName}/*'
+                  - !Sub 'arn:aws:s3:::${DevBucketName}/*'
                   - !Sub 'arn:aws:s3:::${ScriptsBucketName}/*'
 
   GlueJob:

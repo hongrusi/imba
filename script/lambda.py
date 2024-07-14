@@ -12,12 +12,9 @@ def handler(event, context):
         source_file = record['s3']['object']['key']
         destination_bucket = os.environ['DESTINATION_BUCKET']
 
-        # Get current timestamp
-        timestamp = datetime.utcnow().strftime('%Y%m%d%H%M%S')
-
-        # Add timestamp to the destination file name
+        # Create folder structure in destination bucket
         file_name = source_file.split('/')[-1]
-        destination_file = f"data/{file_name}_{timestamp}"
+        destination_file = f"data/{file_name}"
         
         # Copy the file to the destination bucket with the new file name
         s3.copy_object(
