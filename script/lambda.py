@@ -1,14 +1,27 @@
 import boto3
 import os
 import json
+from datetime import datetime
+
 def handler(event, context):
     s3 = boto3.client('s3')
     print("Received event data format: " + json.dumps(event))
 
-# When iterating, each record is a single dictionary repreesenting an s3 event
     for record in event['Records']:  
         source_bucket = record['s3']['bucket']['name']
         source_file = record['s3']['object']['key']
         destination_bucket = os.environ['DESTINATION_BUCKET']
-        destination_file = 'data/' + source_file.split('/')[-1]
-        s3.copy_object(Bucket=destination_bucket, CopySource={'Bucket': source_bucket, 'Key': source_file}, Key=destination_file)
+
+        # Get current timestamp
+        timestamp = datetime.utcnow().strftime('%Y%m%d%H%M%S')
+
+        # Add timestamp to the destination file name
+        file_name = source_file.split('/')[-1]
+        destination_file = f"data/{file_name}_{timestamp}"
+        
+        # Copy the file to the destination bucket with the new file name
+        s3.copy_object(
+            Bucket=destination_bucket,
+            CopySource={'Bucket': source_bucket, 'Key': source_file},
+            Key=destination_file
+        )

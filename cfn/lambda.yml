@@ -44,7 +44,7 @@ Resources:
     Type: 'AWS::Lambda::Function'
     Properties:
       FunctionName: !Sub '${AWS::StackName}-CopyObject'
-      Handler: index.handler
+      Handler: lambda.handler
       Role: !GetAtt LambdaExecutionRole.Arn # This indicates the function depends on the IAM role. The creation orderis automatic
       Runtime: python3.12
       Timeout: 15
