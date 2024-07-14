@@ -50,7 +50,7 @@ Resources:
       DatabaseName: imba
       Targets: 
         S3Targets: 
-          - Path: !Sub 's3://{DevBucket}'
+          - Path: !Sub 's3://${DevBucket}'
       Name: 'imba-crawler'
       SchemaChangePolicy: 
         UpdateBehavior: 'UPDATE_IN_DATABASE'
