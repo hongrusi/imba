@@ -37,9 +37,36 @@ Resources:
                 Action:
                   - 's3:GetObject'
                   - 's3:PutObject'
+                  - 's3:ListBucket'
                 Resource: 
                   - !Sub 'arn:aws:s3:::${DevBucketName}/*'
+                  - !Sub 'arn:aws:s3:::${DevBucketName}'
                   - !Sub 'arn:aws:s3:::${ScriptsBucketName}/*'
+                  - !Sub 'arn:aws:s3:::${ScriptsBucketName}'
+        - PolicyName: GlueDataCatalogAccess
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Effect: Allow
+                Action:
+                  - 'glue:GetDatabase'
+                  - 'glue:GetDatabases'
+                  - 'glue:GetTable'
+                  - 'glue:GetTables'
+                  - 'glue:GetPartition'
+                  - 'glue:GetPartitions'
+                  - 'glue:BatchGetPartition'
+                Resource: '*'
+        - PolicyName: CloudWatchLogsAccess
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Effect: Allow
+                Action:
+                  - 'logs:CreateLogGroup'
+                  - 'logs:CreateLogStream'
+                  - 'logs:PutLogEvents'
+                Resource: 'arn:aws:logs:*:*:/aws-glue/*'
 
   GlueJob:
     Type: 'AWS::Glue::Job'
