@@ -14,7 +14,11 @@ def handler(event, context):
 
         # Create folder structure in destination bucket
         file_name = source_file.split('/')[-1]
-        destination_file = f"data/{file_name.split('.')[0]}/{file_name}"
+        base_path = "data/"
+        if "order_products" in source_file:
+            destination_file = f"{base_path}/order_products/{file_name}"
+        else:
+            destination_file = f"{base_path}/{file_name.split('.')[0]}/{file_name}"
         
         # Copy the file to the destination bucket with the new file name
         s3.copy_object(
