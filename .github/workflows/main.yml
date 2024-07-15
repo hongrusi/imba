@@ -37,7 +37,7 @@ jobs:
           DEV_BUCKET_NAME=$(aws cloudformation describe-stacks --stack-name imba-buckets --query "Stacks[0].Outputs[?OutputKey=='DevBucketName'].OutputValue" --output text)
           SCRIPTS_BUCKET_NAME=$(aws cloudformation describe-stacks --stack-name imba-buckets --query "Stacks[0].Outputs[?OutputKey=='ScriptsBucketName'].OutputValue" --output text)
           echo "RAW_DATA_BUCKET_NAME=$RAW_DATA_BUCKET_NAME" >> $GITHUB_ENV
-          echo "DEV_BUCKET_NAME=$IMBA_STANLEY_BUCKET_NAME" >> $GITHUB_ENV
+          echo "DEV_BUCKET_NAME=$DEV_BUCKET_NAME" >> $GITHUB_ENV
           echo "SCRIPTS_BUCKET_NAME=$SCRIPTS_BUCKET_NAME" >> $GITHUB_ENV
 
       - name: Zip function
