@@ -97,7 +97,7 @@ jobs:
           template: cfn/glue.yml
           parameter-overrides: >-
             ScriptsBucketName=${{ env.SCRIPTS_BUCKET_NAME }},
-            DevBucketName=${{ env.IMBA_STANLEY_BUCKET_NAME }}
+            DevBucketName=${{ env.DEV_BUCKET_NAME }}
           no-fail-on-empty-changeset: "1"
 
       - name: Fetch Glue Job Name

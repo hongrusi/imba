@@ -9,7 +9,7 @@ Parameters:
 
   ScriptsBucketName:
     Type: String
-    Description: imba-scripts
+    Description: imba-devmel-scripts
 
   DevBucketName:
     Type: String
