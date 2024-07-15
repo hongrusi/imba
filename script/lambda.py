@@ -14,7 +14,7 @@ def handler(event, context):
 
         # Create folder structure in destination bucket
         file_name = source_file.split('/')[-1]
-        base_path = "data/"
+        base_path = "data"
         if "order_products" in source_file:
             destination_file = f"{base_path}/order_products/{file_name}"
         else:
