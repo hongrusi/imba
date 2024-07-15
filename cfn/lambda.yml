@@ -53,7 +53,7 @@ Resources:
         S3Key: lambda.zip
       Environment:
         Variables:
-          DESTINATION_BUCKET: !Sub '${DestinationBucketName}-scripts'
+          DESTINATION_BUCKET: !Sub '${DestinationBucketName}'
           SOURCE_BUCKET: !Ref RawDataBucket
 
   LambdaPermission:
