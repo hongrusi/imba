@@ -1,11 +1,11 @@
 name: Deploy Cloudformation Templates
 
 on:
-  push:
-    branches:
-      - main  # Trigger on pushes to the main branch
+#  push:
+#    branches:
+#      - main  # Trigger on pushes to the main branch
   
-#  workflow_dispatch: # Trigger manually on workflow
+  workflow_dispatch: # Trigger manually on workflow
 
 jobs:
   deploy_resources:
